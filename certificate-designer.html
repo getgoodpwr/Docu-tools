@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Certificate Designer · GoodPWR HR Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,ital,wght@6..96,0,700;6..96,1,500&family=Jost:wght@400;500;600&family=IBM+Plex+Mono:wght@400&family=Cinzel:wght@600;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,600;1,500&display=swap">
+<link rel="stylesheet" href="../assets/hub.css">
+<style>
+.tpls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tpls button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:8px 4px;font-size:13px}
+.tpls button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+#cv{width:100%;max-width:900px;height:auto;box-shadow:0 1px 3px rgba(0,0,0,.16),0 8px 24px rgba(0,0,0,.10);background:#fff}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head"><h1>Certificate Designer</h1><span class="replaces">Instead of Canva Pro</span>
+    <p>Award, recognition and training certificates in GoodPWR style. Make one, or paste a list of names and get a certificate for each.</p></div>
+  <div class="cols wide-left">
+    <aside>
+      <div class="panel stack">
+        <h2>Design</h2>
+        <div class="tpls" id="tpls"><button data-t="classic" aria-pressed="true">Classic</button><button data-t="modern" aria-pressed="false">Modern</button><button data-t="minimal" aria-pressed="false">Minimal</button></div>
+        <div class="grid2">
+          <div class="field"><label for="accent">Accent</label><input type="color" id="accent" value="#2E7D4F"></div>
+          <div class="field"><label for="gold">Trim</label><input type="color" id="gold" value="#B08D3C"></div>
+        </div>
+        <div class="drop" id="dropLogo" style="padding:12px"><strong style="font-size:14px">Logo (optional)</strong><span class="muted">PNG with transparent background works best</span></div>
+        <label class="check"><input type="checkbox" id="seal" checked> Show seal</label>
+      </div>
+      <div class="panel stack">
+        <h2>Wording</h2>
+        <div class="field"><label for="title">Title</label><input type="text" id="title" value="Certificate of Achievement"></div>
+        <div class="field"><label for="pre">Line above the name</label><input type="text" id="pre" value="This certificate is proudly presented to"></div>
+        <div class="field"><label for="name">Recipient</label><input type="text" id="name" value="Alex Morgan"></div>
+        <div class="field"><label for="desc">Description</label><textarea id="desc" style="min-height:70px">For outstanding safety leadership and completing 1,000 hours on site with zero incidents.</textarea></div>
+        <div class="field"><label for="date">Date</label><input type="text" id="date"></div>
+        <div class="grid2">
+          <div class="field"><label for="s1n">Signer 1</label><input type="text" id="s1n" value="Dana Lee"></div>
+          <div class="field"><label for="s1t">Title</label><input type="text" id="s1t" value="Operations Director"></div>
+          <div class="field"><label for="s2n">Signer 2</label><input type="text" id="s2n" value=""></div>
+          <div class="field"><label for="s2t">Title</label><input type="text" id="s2t" value=""></div>
+        </div>
+      </div>
+      <div class="panel stack">
+        <h2>Batch (optional)</h2>
+        <div class="field"><label for="batch">Names, one per line</label><textarea id="batch" placeholder="Alex Morgan&#10;Priya Shah&#10;Marco Reyes"></textarea></div>
+        <div class="drop" id="dropCsv" style="padding:12px"><strong style="font-size:14px">…or load a CSV / Excel</strong><span class="muted">Uses the first column, or one called Name</span></div>
+      </div>
+    </aside>
+    <section class="stack">
+      <canvas id="cv" width="1584" height="1224" aria-label="Certificate preview"></canvas>
+      <div class="row">
+        <button class="btn primary" id="pdf">Download PDF</button>
+        <button class="btn" id="png">Download PNG</button>
+        <button class="btn" id="batchGo">Make one for every name</button>
+        <span class="small muted" id="batchInfo"></span>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="../assets/hub.js"></script>
+<script>
+Hub.mount('Certificate Designer');
+const $ = id => document.getElementById(id);
+const W = 792, H = 612; let tpl = 'classic', logo = null;
+$('date').value = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+const v = id => $(id).value;
+
+function wrapCanvas(ctx, text, maxW) {
+  const words = text.split(/\s+/), lines = []; let line = '';
+  for (const w of words) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; }
+  if (line) lines.push(line); return lines;
+}
+function fitFont(ctx, text, family, start, maxW) { let s = start; do { ctx.font = family.replace('%s', s + 'px'); if (ctx.measureText(text).width <= maxW) break; s -= 2; } while (s > 12); return s; }
+
+function draw(ctx, k, name) {
+  const accent = v('accent'), gold = v('gold'), ink = '#1f2124';
+  ctx.save(); ctx.scale(k, k);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  let cx = W / 2, top = 120, maxW = 560;
+  if (tpl === 'classic') {
+    ctx.fillStyle = '#FBF9F3'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = accent; ctx.lineWidth = 10; ctx.strokeRect(22, 22, W - 44, H - 44);
+    ctx.strokeStyle = gold; ctx.lineWidth = 1.5; ctx.strokeRect(38, 38, W - 76, H - 76); ctx.strokeRect(44, 44, W - 88, H - 88);
+    [[44, 44], [W - 44, 44], [44, H - 44], [W - 44, H - 44]].forEach(([x, y]) => { ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill(); });
+  } else if (tpl === 'modern') {
+    ctx.fillStyle = accent; ctx.fillRect(0, 0, 150, H);
+    ctx.fillStyle = gold; ctx.fillRect(150, 0, 6, H);
+    ctx.globalAlpha = .12; ctx.fillStyle = '#fff';
+    for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.moveTo(0, i * 80); ctx.lineTo(150, i * 80 - 60); ctx.lineTo(150, i * 80 - 40); ctx.lineTo(0, i * 80 + 20); ctx.fill(); }
+    ctx.globalAlpha = 1; cx = 156 + (W - 156) / 2; maxW = 520; top = 110;
+  } else {
+    ctx.strokeStyle = '#d9d9d4'; ctx.lineWidth = 1; ctx.strokeRect(30, 30, W - 60, H - 60);
+    ctx.fillStyle = accent; ctx.fillRect(W / 2 - 30, 64, 60, 3);
+  }
+  // logo
+  if (logo) { const s = Math.min(54 / logo.height, 170 / logo.width); ctx.drawImage(logo, cx - logo.width * s / 2, tpl === 'minimal' ? 80 : 62, logo.width * s, logo.height * s); top += 20; }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  // title
+  const titleFam = tpl === 'classic' ? '700 %s Cinzel, serif' : tpl === 'modern' ? '600 %s "Playfair Display", serif' : '700 %s "Bodoni Moda", serif';
+  const titleText = tpl === 'classic' ? v('title').toUpperCase() : v('title');
+  const ts = fitFont(ctx, titleText, titleFam, tpl === 'classic' ? 34 : 38, maxW + 60);
+  ctx.fillStyle = tpl === 'modern' ? ink : accent; ctx.font = titleFam.replace('%s', ts + 'px');
+  ctx.fillText(titleText, cx, top + 30);
+  // pre line
+  ctx.fillStyle = '#5c5f63'; ctx.font = '400 14px Jost, sans-serif';
+  ctx.fillText(tpl === 'minimal' ? v('pre').toUpperCase() : v('pre'), cx, top + 78);
+  // name
+  const nameFam = tpl === 'minimal' ? 'italic 500 %s "Bodoni Moda", serif' : '400 %s "Great Vibes", cursive';
+  const ns = fitFont(ctx, name, nameFam, tpl === 'minimal' ? 50 : 62, maxW);
+  ctx.fillStyle = ink; ctx.font = nameFam.replace('%s', ns + 'px'); ctx.fillText(name, cx, top + 148);
+  ctx.strokeStyle = gold; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx - 200, top + 164); ctx.lineTo(cx + 200, top + 164); ctx.stroke();
+  // description
+  ctx.fillStyle = '#3a3c40'; ctx.font = '400 15px Jost, sans-serif';
+  wrapCanvas(ctx, v('desc'), maxW - 40).slice(0, 4).forEach((l, i) => ctx.fillText(l, cx, top + 196 + i * 22));
+  // signatures
+  const sigs = [[v('s1n'), v('s1t')], [v('s2n'), v('s2t')]].filter(s => s[0].trim());
+  const by = H - 96, slots = sigs.length + 1, span = tpl === 'modern' ? W - 156 - 80 : W - 160, x0 = tpl === 'modern' ? 196 : 80;
+  const items = [['date', v('date'), 'Date'], ...sigs.map(s => ['sig', s[0], s[1]])];
+  items.forEach(([kind, a, b], i) => {
+    const x = x0 + span * (i + .5) / slots;
+    ctx.strokeStyle = '#9a9a96'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 85, by); ctx.lineTo(x + 85, by); ctx.stroke();
+    ctx.fillStyle = ink; ctx.font = kind === 'sig' ? '400 26px "Great Vibes", cursive' : '500 14px Jost, sans-serif'; ctx.fillText(a, x, by - 8);
+    ctx.fillStyle = '#6a6c70'; ctx.font = '500 11px Jost, sans-serif'; ctx.fillText((kind === 'sig' ? a + (b ? ' · ' + b : '') : b).toUpperCase(), x, by + 18);
+  });
+  // seal
+  if ($('seal').checked) {
+    const sx = tpl === 'modern' ? 78 : W - 112, sy = tpl === 'modern' ? H - 110 : H - 150, r = 42;
+    ctx.fillStyle = gold; ctx.beginPath();
+    for (let i = 0; i < 48; i++) { const a = i / 48 * Math.PI * 2, rr = i % 2 ? r : r + 5; ctx.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); }
+    ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(sx, sy, r - 7, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = '700 11px Cinzel, serif'; ctx.fillText('GOODPWR', sx, sy - 2); ctx.font = '600 8px Jost, sans-serif'; ctx.fillText('EXCELLENCE', sx, sy + 12);
+  }
+  ctx.restore();
+}
+let fontsReady = Promise.all(['700 30px Cinzel', '400 40px "Great Vibes"', '600 30px "Playfair Display"', 'italic 500 30px "Bodoni Moda"', '700 30px "Bodoni Moda"', '400 15px Jost', '500 15px Jost'].map(f => document.fonts.load(f)));
+async function render() { await fontsReady; const c = $('cv'); draw(c.getContext('2d'), c.width / W, v('name')); }
+document.querySelectorAll('aside input, aside textarea').forEach(el => el.addEventListener('input', render));
+$('seal').onchange = render;
+$('tpls').onclick = e => { const b = e.target.closest('button'); if (!b) return; tpl = b.dataset.t; $('tpls').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); render(); };
+Hub.dropzone($('dropLogo'), { accept: 'image/*', onFiles: async ([f]) => { logo = await Hub.loadImage(await Hub.dataURL(f)); render(); } });
+Hub.dropzone($('dropCsv'), { accept: '.csv,.txt,.xlsx,.xls', onFiles: async ([f]) => {
+  try { const t = await Hub.readTable(f), col = t.headers.find(h => /name/i.test(h)) || t.headers[0]; $('batch').value = t.rows.map(r => r[col]).filter(Boolean).join('\n'); batchInfo(); }
+  catch (e) { Hub.toast('That file could not be read.'); }
+} });
+const names = () => v('batch').split('\n').map(s => s.trim()).filter(Boolean);
+function batchInfo() { const n = names().length; $('batchInfo').textContent = n ? `${n} name${n > 1 ? 's' : ''} ready` : ''; }
+$('batch').addEventListener('input', batchInfo);
+
+async function pdfFor(list) {
+  await Hub.load('pdflib'); await fontsReady;
+  const doc = await PDFLib.PDFDocument.create(), c = document.createElement('canvas'); c.width = W * 3; c.height = H * 3;
+  for (const n of list) {
+    draw(c.getContext('2d'), 3, n);
+    const img = await doc.embedJpg(c.toDataURL('image/jpeg', .93));
+    doc.addPage([W, H]).drawImage(img, { x: 0, y: 0, width: W, height: H });
+  }
+  return doc.save();
+}
+const slug = s => s.replace(/[\\/:*?"<>|]+/g, '-').trim();
+$('pdf').onclick = async () => { Hub.download(await pdfFor([v('name')]), `Certificate - ${slug(v('name'))}.pdf`, 'application/pdf'); };
+$('png').onclick = async () => { await render(); $('cv').toBlob(b => Hub.download(b, `Certificate - ${slug(v('name'))}.png`)); };
+$('batchGo').onclick = async () => {
+  const list = names(); if (!list.length) { Hub.toast('Add names in the Batch box first.'); return; }
+  $('batchGo').disabled = true; $('batchGo').textContent = `Making ${list.length}…`;
+  try { Hub.download(await pdfFor(list), `Certificates (${list.length}).pdf`, 'application/pdf'); Hub.toast(`One PDF with ${list.length} certificates, one per page.`); }
+  catch (e) { Hub.toast('Could not build the certificates: ' + e.message); }
+  $('batchGo').disabled = false; $('batchGo').textContent = 'Make one for every name';
+};
+render();
+</script>
+</body>
+</html>

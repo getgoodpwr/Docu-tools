@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>OCR / Searchable Scans · GoodPWR HR Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=Jost:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="../assets/hub.css">
+<style>
+#text{width:100%;min-height:360px;font-family:var(--f-mono);font-size:13px;line-height:1.5;border:1px solid var(--line);border-radius:6px;padding:12px;background:#fff;resize:vertical}
+.log{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px}
+.thumbs img{height:90px;border:1px solid var(--line);border-radius:3px;background:#fff}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head"><h1>OCR / Searchable Scans</h1><span class="replaces">Instead of Acrobat Pro or ABBYY FineReader</span>
+    <p>Turns scanned PDFs and phone photos of documents into PDFs you can search, select and copy text from. The page looks exactly the same; an invisible text layer is added on top.</p></div>
+  <div class="cols">
+    <aside>
+      <div class="panel stack">
+        <h2>1 · Scans</h2>
+        <div class="drop" id="drop"><strong>Choose a scanned PDF or images</strong><span class="muted">PDF, JPG or PNG. Several images become one PDF.</span></div>
+        <ul class="files" id="files"></ul>
+      </div>
+      <div class="panel stack">
+        <h2>2 · Settings</h2>
+        <div class="field"><label for="lang">Document language</label>
+          <select id="lang"><option value="eng">English</option><option value="spa">Spanish</option><option value="eng+spa">English + Spanish</option><option value="tgl">Filipino (Tagalog)</option><option value="eng+tgl">English + Filipino</option></select></div>
+        <div class="field"><label for="quality">Accuracy</label>
+          <select id="quality"><option value="2">Standard (faster)</option><option value="3" selected>High (best for small print)</option></select></div>
+        <button class="btn primary" id="go" disabled>Make searchable</button>
+        <div class="progress" id="prog" hidden><i></i></div>
+        <div class="log" id="log">The first run downloads the reading engine (about 10 MB). After that it's quick.</div>
+      </div>
+    </aside>
+    <section class="panel stack">
+      <div class="row between"><h2 style="margin:0">Recognized text</h2>
+        <div class="row"><button class="btn sm" id="copy" disabled>Copy text</button><button class="btn sm" id="txt" disabled>Download .txt</button><button class="btn sm primary" id="pdf" disabled>Download searchable PDF</button></div></div>
+      <textarea id="text" placeholder="Text from your scan appears here. You can correct it before copying." spellcheck="false"></textarea>
+      <div class="thumbs" id="thumbs"></div>
+    </section>
+  </div>
+</main>
+<script src="../assets/hub.js"></script>
+<script>
+Hub.mount('OCR / Searchable Scans');
+const $ = id => document.getElementById(id);
+let input = null, result = null;
+const log = t => $('log').textContent = t;
+
+Hub.dropzone($('drop'), { accept: 'application/pdf,.pdf,image/*', multiple: true, onFiles: async fs => {
+  const pdf = fs.find(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name));
+  if (pdf) input = { kind: 'pdf', name: pdf.name, bytes: await Hub.bytes(pdf) };
+  else input = { kind: 'img', name: fs[0].name, files: fs.filter(f => f.type.startsWith('image/')) };
+  $('files').innerHTML = (input.kind === 'pdf' ? [pdf] : input.files).map(f => `<li><span class="name">${Hub.esc(f.name)}</span><span class="meta">${Hub.size(f.size)}</span></li>`).join('');
+  $('go').disabled = false; result = null; ['copy', 'txt', 'pdf'].forEach(id => $(id).disabled = true);
+} });
+
+async function pagesToCanvases(q) {
+  const out = [];
+  if (input.kind === 'pdf') {
+    const pdf = await Hub.openPdf(input.bytes);
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const pg = await pdf.getPage(i), v1 = pg.getViewport({ scale: 1 }), scale = Math.min(q, 4200 / Math.max(v1.width, v1.height));
+      const vp = pg.getViewport({ scale }), c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      await pg.render({ canvasContext: ctx, viewport: vp }).promise;
+      out.push({ canvas: c, vp, index: i - 1 });
+    }
+  } else {
+    for (const f of input.files) {
+      const img = await Hub.loadImage(await Hub.dataURL(f)), sc = Math.min(1, 3400 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = img.width * sc; c.height = img.height * sc; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      out.push({ canvas: c, jpeg: c.toDataURL('image/jpeg', .85) });
+    }
+  }
+  return out;
+}
+$('go').onclick = async () => {
+  $('go').disabled = true; $('prog').hidden = false; const bar = $('prog').firstElementChild; bar.style.width = '2%';
+  let worker;
+  try {
+    log('Loading the reading engine…'); await Hub.load('tesseract', 'pdflib');
+    const pages = await pagesToCanvases(+$('quality').value);
+    let cur = 0;
+    worker = await Tesseract.createWorker($('lang').value, 1, { logger: m => { if (m.status === 'recognizing text') bar.style.width = ((cur + m.progress) / pages.length * 100) + '%'; else if (m.status) log(m.status[0].toUpperCase() + m.status.slice(1) + '…'); } });
+    const res = []; $('thumbs').innerHTML = '';
+    for (; cur < pages.length; cur++) {
+      log(`Reading page ${cur + 1} of ${pages.length}…`);
+      const { data } = await worker.recognize(pages[cur].canvas);
+      const words = (data.words || []).filter(w => w.text && w.text.trim() && w.confidence > 20);
+      res.push({ ...pages[cur], words, text: data.text });
+      const t = new Image(); t.src = pages[cur].canvas.toDataURL('image/jpeg', .5); t.alt = `Page ${cur + 1}`; $('thumbs').appendChild(t);
+    }
+    result = res;
+    $('text').value = res.map((r, i) => (res.length > 1 ? `--- Page ${i + 1} ---\n` : '') + r.text.trim()).join('\n\n');
+    ['copy', 'txt', 'pdf'].forEach(id => $(id).disabled = false);
+    const n = res.reduce((s, r) => s + r.words.length, 0);
+    log(n ? `Done. Found ${n} words on ${res.length} page${res.length > 1 ? 's' : ''}.` : 'Done, but no readable text was found. Try High accuracy or a clearer scan.');
+    bar.style.width = '100%';
+  } catch (e) { console.error(e); log('Something went wrong: ' + e.message); }
+  if (worker) worker.terminate();
+  $('go').disabled = false; setTimeout(() => { $('prog').hidden = true; bar.style.width = 0; }, 800);
+};
+
+$('pdf').onclick = async () => {
+  $('pdf').disabled = true; $('pdf').textContent = 'Building…';
+  try {
+    const { PDFDocument, StandardFonts, degrees } = PDFLib;
+    let doc; if (input.kind === 'pdf') { doc = await PDFDocument.load(input.bytes, { ignoreEncryption: true }); } else doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    for (const r of result) {
+      let page, toPdf, rot = 0, pxToPt;
+      if (input.kind === 'pdf') { page = doc.getPage(r.index); toPdf = (x, y) => r.vp.convertToPdfPoint(x, y); rot = r.vp.rotation || 0; pxToPt = 1 / r.vp.scale; }
+      else {
+        const W = 612, H = W * r.canvas.height / r.canvas.width; page = doc.addPage([W, H]);
+        page.drawImage(await doc.embedJpg(r.jpeg), { x: 0, y: 0, width: W, height: H });
+        pxToPt = W / r.canvas.width; toPdf = (x, y) => [x * pxToPt, H - y * pxToPt];
+      }
+      for (const w of r.words) {
+        const txt = Hub.winAnsi(w.text.trim()); if (!txt) continue;
+        const { x0, y0, x1, y1 } = w.bbox, hPt = (y1 - y0) * pxToPt, wPt = (x1 - x0) * pxToPt;
+        const unit = font.widthOfTextAtSize(txt, 1); if (!unit) continue;
+        const size = Math.max(1, Math.min(wPt / unit, hPt * 1.3));
+        const [bx, by] = toPdf(x0, y1 - (y1 - y0) * .2);
+        page.drawText(txt, { x: bx, y: by, size, font, opacity: 0, rotate: degrees(rot) });
+      }
+    }
+    Hub.download(await doc.save(), Hub.baseName(input.name) + '-searchable.pdf', 'application/pdf'); Hub.toast('Searchable PDF downloaded.');
+  } catch (e) { console.error(e); Hub.toast('Could not build the PDF: ' + e.message); }
+  $('pdf').disabled = false; $('pdf').textContent = 'Download searchable PDF';
+};
+$('copy').onclick = async () => { try { await navigator.clipboard.writeText($('text').value); Hub.toast('Text copied.'); } catch (e) { $('text').select(); Hub.toast('Press Ctrl+C to copy the selected text.'); } };
+$('txt').onclick = () => Hub.download($('text').value, Hub.baseName(input.name) + '.txt', 'text/plain');
+</script>
+</body>
+</html>

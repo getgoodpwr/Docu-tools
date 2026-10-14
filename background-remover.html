@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Background Remover · GoodPWR HR Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=Jost:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="../assets/hub.css">
+<style>
+.bgs{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bgs button{width:34px;height:34px;border-radius:6px;border:1px solid var(--line);padding:0}
+.bgs button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--accent)}
+.checker{background-color:#fff;background-image:linear-gradient(45deg,#ddd 25%,transparent 25%),linear-gradient(-45deg,#ddd 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ddd 75%),linear-gradient(-45deg,transparent 75%,#ddd 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}
+.results{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.res{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+.res .img{aspect-ratio:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.res .img img{max-width:100%;max-height:100%;display:block}
+.res .meta{padding:10px;display:flex;flex-direction:column;gap:8px}
+.res .meta .name{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res .status{font-size:12.5px;color:var(--muted);font-family:var(--f-mono)}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head"><h1>Background Remover</h1><span class="replaces">Instead of remove.bg or Canva Pro</span>
+    <p>Remove the background from headshots and product photos, or swap in a clean color so every employee photo matches. Works on several photos at once.</p></div>
+  <div class="cols">
+    <aside>
+      <div class="panel stack">
+        <h2>Photos</h2>
+        <div class="drop" id="drop"><strong>Choose photos</strong><span class="muted">JPG or PNG, one or many</span></div>
+      </div>
+      <div class="panel stack">
+        <h2>Result</h2>
+        <div class="field"><label>Background</label>
+          <div class="bgs" id="bgs">
+            <button class="checker" data-c="" aria-pressed="true" title="Transparent" aria-label="Transparent"></button>
+            <button data-c="#FFFFFF" style="background:#fff" aria-pressed="false" aria-label="White"></button>
+            <button data-c="#E9EAE6" style="background:#E9EAE6" aria-pressed="false" aria-label="Light gray"></button>
+            <button data-c="#2E7D4F" style="background:#2E7D4F" aria-pressed="false" aria-label="GoodPWR green"></button>
+            <button data-c="#1F2124" style="background:#1F2124" aria-pressed="false" aria-label="Charcoal"></button>
+            <input type="color" id="custom" value="#3B6FD8" title="Custom color" aria-label="Custom color" style="width:40px;height:34px;border:1px solid var(--line);border-radius:6px;padding:2px">
+          </div></div>
+        <div class="field"><label for="crop">Framing</label>
+          <select id="crop"><option value="none">Keep original size</option><option value="square">Square headshot</option><option value="id">2 × 2 in ID photo (600 px)</option><option value="portrait">Portrait 4:5</option></select></div>
+        <div class="field"><label for="quality">Quality</label><select id="quality"><option value="isnet_quint8">Fast</option><option value="isnet_fp16" selected>Best</option></select></div>
+        <button class="btn" id="all" disabled>Download all (ZIP)</button>
+        <p class="small muted" id="log" style="margin:0">The first photo downloads the AI model (about 40 MB) into your browser. Your photos are never uploaded.</p>
+      </div>
+    </aside>
+    <section><div class="results" id="results"><p class="empty-note" style="grid-column:1/-1">Your cleaned-up photos appear here.</p></div></section>
+  </div>
+</main>
+<script src="../assets/hub.js"></script>
+<script>
+Hub.mount('Background Remover');
+const $ = id => document.getElementById(id);
+let items = [], bg = '', lib = null, queue = Promise.resolve();
+async function getLib() {
+  if (!lib) lib = import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/+esm');
+  return lib;
+}
+Hub.dropzone($('drop'), { accept: 'image/png,image/jpeg,image/webp', multiple: true, onFiles: fs => {
+  if (!items.length) $('results').innerHTML = '';
+  fs.forEach(f => { const it = { file: f, name: f.name, cut: null, out: null }; items.push(it); addCard(it); queue = queue.then(() => process(it)); });
+} });
+function addCard(it) {
+  const d = document.createElement('div'); d.className = 'res';
+  d.innerHTML = `<div class="img checker"><img alt=""></div><div class="meta"><span class="name"></span><span class="status">Waiting…</span><button class="btn sm primary" disabled>Download PNG</button></div>`;
+  d.querySelector('.name').textContent = it.name; it.el = d; $('results').appendChild(d);
+  Hub.dataURL(it.file).then(u => { if (!it.cut) d.querySelector('img').src = u; });
+  d.querySelector('button').onclick = () => it.out && Hub.download(it.out, Hub.baseName(it.name) + '-cutout.png');
+}
+async function process(it) {
+  const st = it.el.querySelector('.status');
+  try {
+    st.textContent = 'Loading AI model…';
+    const { removeBackground } = await getLib();
+    const blob = await removeBackground(it.file, {
+      model: $('quality').value === 'isnet_quint8' ? 'small' : 'medium',
+      progress: (k, cur, tot) => { if (/fetch/.test(k) && tot) st.textContent = `Downloading model ${Math.round(cur / tot * 100)}%`; else st.textContent = 'Removing background…'; },
+      output: { format: 'image/png' }
+    });
+    it.cut = await Hub.loadImage(URL.createObjectURL(blob));
+    await compose(it); st.textContent = 'Done'; it.el.querySelector('button').disabled = false; $('all').disabled = false;
+  } catch (e) { console.error(e); st.textContent = 'Could not process this photo.'; $('log').textContent = 'If this keeps happening, check your internet connection (the model has to download once) or try Fast quality.'; }
+}
+function alphaBox(img) {
+  const c = document.createElement('canvas'), s = Math.min(1, 400 / Math.max(img.width, img.height)); c.width = img.width * s; c.height = img.height * s;
+  const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, c.width, c.height); const d = ctx.getImageData(0, 0, c.width, c.height).data;
+  let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < x0) return { x: 0, y: 0, w: img.width, h: img.height };
+  return { x: x0 / s, y: y0 / s, w: (x1 - x0) / s, h: (y1 - y0) / s };
+}
+async function compose(it) {
+  const img = it.cut, mode = $('crop').value; let sx = 0, sy = 0, sw = img.width, sh = img.height, ow = img.width, oh = img.height;
+  if (mode !== 'none') {
+    const b = alphaBox(img), ratio = mode === 'portrait' ? 4 / 5 : 1;
+    // frame head and shoulders: width from subject width, top a little above the head
+    let w = Math.max(b.w * 1.15, b.h * .62 * ratio), h = w / ratio;
+    sx = b.x + b.w / 2 - w / 2; sy = b.y - h * .08; sw = w; sh = h;
+    ow = mode === 'id' ? 600 : Math.min(1200, Math.round(w)); oh = Math.round(ow / ratio);
+  }
+  const c = document.createElement('canvas'); c.width = ow; c.height = oh; const ctx = c.getContext('2d');
+  if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, ow, oh); }
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, ow, oh);
+  it.out = await new Promise(r => c.toBlob(r, 'image/png'));
+  const im = it.el.querySelector('img'); if (im.dataset.u) URL.revokeObjectURL(im.dataset.u); im.dataset.u = im.src = URL.createObjectURL(it.out);
+  it.el.querySelector('.img').classList.toggle('checker', !bg);
+}
+const recompose = () => items.filter(i => i.cut).forEach(compose);
+$('bgs').onclick = e => { const b = e.target.closest('button'); if (!b) return; bg = b.dataset.c; $('bgs').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); recompose(); };
+$('custom').oninput = e => { bg = e.target.value; $('bgs').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', false)); recompose(); };
+$('crop').onchange = recompose;
+$('all').onclick = () => { const done = items.filter(i => i.out); Hub.zip(done.map(i => ({ name: Hub.baseName(i.name) + '-cutout.png', data: i.out })), 'photos-no-background.zip'); };
+</script>
+</body>
+</html>

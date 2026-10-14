@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Announcement Graphics · GoodPWR HR Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,ital,wght@6..96,0,700;6..96,1,600&family=Jost:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="../assets/hub.css">
+<style>
+.tpls{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}
+.tpls button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:8px 6px;font-size:13px}
+.tpls button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.canvas-wrap{background:#E4E4E0;border-radius:var(--r);padding:20px;display:flex;justify-content:center}
+#cv{max-width:100%;max-height:72vh;width:auto;height:auto;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+#caption{min-height:110px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head"><h1>Announcement Graphics</h1><span class="replaces">Instead of Canva Pro</span>
+    <p>On-brand images for hiring posts, new-hire welcomes, holiday notices and work anniversaries, sized for every platform.</p></div>
+  <div class="cols wide-left">
+    <aside>
+      <div class="panel stack">
+        <h2>Template</h2>
+        <div class="tpls" id="tpls"></div>
+        <div class="field"><label for="fmt">Size</label>
+          <select id="fmt"><option value="1080x1080">Square · Instagram, Facebook (1080×1080)</option><option value="1080x1350">Portrait · Instagram feed (1080×1350)</option><option value="1080x1920">Story · Instagram, Facebook (1080×1920)</option><option value="1200x627">LinkedIn post (1200×627)</option><option value="1920x1080">Slide or TV screen (1920×1080)</option></select></div>
+        <div class="field"><label for="theme">Look</label>
+          <select id="theme"><option value="dark">Charcoal</option><option value="brand">GoodPWR green</option><option value="light">Light</option></select></div>
+      </div>
+      <div class="panel stack">
+        <h2>Text</h2>
+        <div class="field"><label for="eyebrow">Small label</label><input type="text" id="eyebrow"></div>
+        <div class="field"><label for="headline">Headline</label><textarea id="headline" style="min-height:60px"></textarea></div>
+        <div class="field"><label for="body">Supporting text</label><textarea id="body" style="min-height:60px"></textarea></div>
+        <div class="field"><label for="details">Details, one per line</label><textarea id="details" style="min-height:70px"></textarea></div>
+        <div class="field"><label for="cta">Call to action</label><input type="text" id="cta"></div>
+      </div>
+      <div class="panel stack">
+        <h2>Images</h2>
+        <div class="drop" id="dropPhoto" style="padding:12px"><strong style="font-size:14px">Photo (optional)</strong><span class="muted">Shown in a circle, good for people</span></div>
+        <div class="drop" id="dropLogo" style="padding:12px"><strong style="font-size:14px">Logo (optional)</strong><span class="muted">Shown in the corner</span></div>
+        <div class="row"><button class="btn sm" id="clrPhoto">Remove photo</button><button class="btn sm" id="clrLogo">Remove logo</button></div>
+      </div>
+    </aside>
+    <section class="stack">
+      <div class="canvas-wrap"><canvas id="cv" width="1080" height="1080" aria-label="Graphic preview"></canvas></div>
+      <div class="row"><button class="btn primary" id="png">Download PNG</button><button class="btn" id="jpg">Download JPG</button></div>
+      <div class="panel stack">
+        <div class="row between"><h2 style="margin:0">Suggested caption</h2><button class="btn sm" id="copyCap">Copy caption</button></div>
+        <textarea id="caption" class="input"></textarea>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="../assets/hub.js"></script>
+<script>
+Hub.mount('Announcement Graphics');
+const $ = id => document.getElementById(id);
+const T = {
+  hiring: { label: "We're hiring", eyebrow: 'Join the team', headline: "We're hiring:\nSolar Installer", body: 'Help homes and businesses switch to clean energy. Full training provided.', details: 'Full-time, on site\nCompetitive hourly pay + benefits\nPaid training and certifications', cta: 'Apply at getgoodpwr.com/careers',
+    cap: "We're growing! GoodPWR is hiring a {role}. If you love hands-on work and want to build a career in clean energy, we want to hear from you.\n\nApply: getgoodpwr.com/careers\n\n#Hiring #SolarJobs #CleanEnergy #GoodPWR" },
+  welcome: { label: 'Welcome', eyebrow: 'New team member', headline: 'Welcome aboard,\nPriya Shah!', body: 'Priya joins us as Project Coordinator and will keep our installs running on time.', details: '', cta: 'Say hi when you see her!',
+    cap: "Please join us in welcoming {name} to the GoodPWR team! We're glad to have you.\n\n#Welcome #NewHire #TeamGoodPWR" },
+  anniv: { label: 'Anniversary', eyebrow: 'Work anniversary', headline: '5 years with GoodPWR', body: 'Thank you, Marco, for five years of great work and leadership on every site.', details: '', cta: 'Congratulations, Marco!',
+    cap: "Happy work anniversary, {name}! Thank you for everything you bring to the team.\n\n#WorkAnniversary #TeamGoodPWR" },
+  holiday: { label: 'Holiday', eyebrow: 'Office notice', headline: 'Happy Thanksgiving', body: 'Our offices will be closed so our team can spend time with family.', details: 'Closed: Thursday, Nov 26 – Friday, Nov 27\nBack: Monday, Nov 30', cta: 'For urgent service, call our support line.',
+    cap: "Happy Thanksgiving from all of us at GoodPWR! Our office is closed Nov 26–27 and reopens Monday, Nov 30.\n\n#HappyThanksgiving #GoodPWR" },
+  news: { label: 'Announcement', eyebrow: 'Company news', headline: 'Open enrollment\nstarts Monday', body: 'Review your health, dental and vision options for next year.', details: 'Window: Nov 2 – Nov 16\nQuestions? Ask HR anytime', cta: 'Check your email for the guide',
+    cap: "Reminder: open enrollment starts Monday and runs through Nov 16. Check your email for the benefits guide, and reach out to HR with any questions." },
+  safety: { label: 'Safety', eyebrow: 'Safety first', headline: '100 days\nwithout an incident', body: 'Thanks to every crew for looking out for each other.', details: '', cta: "Let's keep it going!",
+    cap: "100 days without a safety incident! Thank you to every crew member for making safety a habit.\n\n#SafetyFirst #TeamGoodPWR" }
+};
+const THEMES = { dark: { bg: '#1F2124', bg2: '#2A2D31', ink: '#FFFFFF', sub: '#C9CBC6', acc: '#5FBF84' }, brand: { bg: '#2E7D4F', bg2: '#276B43', ink: '#FFFFFF', sub: '#DDEFE3', acc: '#F3D36B' }, light: { bg: '#F3F3F1', bg2: '#E7E7E3', ink: '#1F2124', sub: '#55585C', acc: '#2E7D4F' } };
+let key = 'hiring', photo = null, logo = null;
+$('tpls').innerHTML = Object.entries(T).map(([k, t]) => `<button data-k="${k}" aria-pressed="${k === key}">${t.label}</button>`).join('');
+function load(k) { key = k; ['eyebrow', 'headline', 'body', 'details', 'cta'].forEach(f => $(f).value = T[k][f]); $('tpls').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === k)); render(); }
+$('tpls').onclick = e => { const b = e.target.closest('button'); if (b) load(b.dataset.k); };
+
+function lines(ctx, text, maxW) {
+  const out = []; text.split('\n').forEach(par => { let l = ''; par.split(' ').forEach(w => { const t = l ? l + ' ' + w : w; if (ctx.measureText(t).width > maxW && l) { out.push(l); l = w; } else l = t; }); out.push(l); }); return out;
+}
+const ready = Promise.all(['700 80px "Bodoni Moda"', '400 30px Jost', '600 30px Jost', '700 30px Jost'].map(f => document.fonts.load(f)));
+async function render() {
+  await ready;
+  const [W, H] = $('fmt').value.split('x').map(Number), c = $('cv'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d'), th = THEMES[$('theme').value], u = Math.min(W, H) / 1080, wide = W / H > 1.4;
+  // background
+  ctx.fillStyle = th.bg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = th.bg2; ctx.beginPath(); ctx.arc(W * 1.02, H * -.02, Math.max(W, H) * .5, 0, 7); ctx.fill();
+  ctx.strokeStyle = th.acc; ctx.globalAlpha = .35; ctx.lineWidth = 3 * u;
+  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(W * 1.02, H * -.02, Math.max(W, H) * (.56 + i * .07), 0, 7); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  const pad = 90 * u; let x = pad, y = pad, maxW = W - pad * 2;
+  // photo
+  if (photo) {
+    const r = (wide ? H * .28 : 150 * u), px = wide ? W - pad - r : W - pad - r, py = wide ? H / 2 : pad + r + 40 * u;
+    ctx.save(); ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.clip();
+    const s = Math.max(2 * r / photo.width, 2 * r / photo.height); ctx.drawImage(photo, px - photo.width * s / 2, py - photo.height * s / 2, photo.width * s, photo.height * s); ctx.restore();
+    ctx.strokeStyle = th.acc; ctx.lineWidth = 8 * u; ctx.beginPath(); ctx.arc(px, py, r + 6 * u, 0, 7); ctx.stroke();
+    if (wide) maxW = W - pad * 2 - r * 2 - 60 * u; else y = py + r + 70 * u;
+  }
+  // logo
+  if (logo) { const s = Math.min(70 * u / logo.height, 260 * u / logo.width); ctx.drawImage(logo, pad, H - pad - logo.height * s, logo.width * s, logo.height * s); }
+  else { ctx.fillStyle = th.ink; ctx.font = `700 ${34 * u}px "Bodoni Moda"`; ctx.textBaseline = 'alphabetic'; ctx.fillText('GoodPWR', pad, H - pad); }
+  if (!photo || wide) y = wide ? pad + 20 * u : Math.max(pad + 60 * u, H * .2);
+  ctx.textBaseline = 'top';
+  // eyebrow
+  const eb = $('eyebrow').value.toUpperCase();
+  if (eb) { ctx.font = `600 ${26 * u}px Jost`; ctx.letterSpacing = `${4 * u}px`; const w = ctx.measureText(eb).width;
+    ctx.fillStyle = th.acc; ctx.fillRect(x, y + 12 * u, 36 * u, 4 * u); ctx.fillText(eb, x + 52 * u, y); ctx.letterSpacing = '0px'; y += 64 * u; }
+  // headline (shrink to fit)
+  let hs = (wide ? 84 : 96) * u, hl;
+  for (; hs > 36 * u; hs -= 4 * u) { ctx.font = `700 ${hs}px "Bodoni Moda"`; hl = lines(ctx, $('headline').value, maxW); if (hl.length * hs * 1.08 < H * (wide ? .42 : .36)) break; }
+  ctx.fillStyle = th.ink; hl.forEach(l => { ctx.fillText(l, x, y); y += hs * 1.08; }); y += 26 * u;
+  // body
+  if ($('body').value) { ctx.font = `400 ${32 * u}px Jost`; ctx.fillStyle = th.sub; lines(ctx, $('body').value, maxW).forEach(l => { ctx.fillText(l, x, y); y += 44 * u; }); y += 20 * u; }
+  // details
+  const det = $('details').value.split('\n').filter(s => s.trim());
+  if (det.length) { ctx.font = `500 ${30 * u}px Jost`; det.forEach(d => { ctx.fillStyle = th.acc; ctx.beginPath(); ctx.arc(x + 9 * u, y + 19 * u, 7 * u, 0, 7); ctx.fill(); ctx.fillStyle = th.ink; lines(ctx, d, maxW - 36 * u).forEach((l, i) => { ctx.fillText(l, x + 34 * u, y); y += 42 * u; }); y += 6 * u; }); y += 14 * u; }
+  // cta pill
+  const cta = $('cta').value;
+  if (cta) { ctx.font = `600 ${28 * u}px Jost`; const w = Math.min(ctx.measureText(cta).width + 56 * u, maxW), h = 64 * u, cy = Math.min(y + 10 * u, H - pad - 140 * u);
+    ctx.fillStyle = th.acc; roundRect(ctx, x, cy, w, h, h / 2); ctx.fill(); ctx.fillStyle = $('theme').value === 'light' ? '#fff' : '#1F2124'; ctx.textBaseline = 'middle'; ctx.fillText(cta, x + 28 * u, cy + h / 2, maxW - 56 * u); }
+  caption();
+}
+function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function caption() {
+  const h = $('headline').value.replace(/\n/g, ' '), name = (h.match(/,\s*([^!]+)!?$/) || [])[1] || 'our newest teammate', role = (h.split(':')[1] || 'new team member').trim();
+  $('caption').value = T[key].cap.replace('{name}', name.trim()).replace('{role}', role);
+}
+document.querySelectorAll('aside input, aside textarea').forEach(el => el.addEventListener('input', render));
+$('fmt').onchange = render; $('theme').onchange = render;
+Hub.dropzone($('dropPhoto'), { accept: 'image/*', onFiles: async ([f]) => { photo = await Hub.loadImage(await Hub.dataURL(f)); render(); } });
+Hub.dropzone($('dropLogo'), { accept: 'image/*', onFiles: async ([f]) => { logo = await Hub.loadImage(await Hub.dataURL(f)); render(); } });
+$('clrPhoto').onclick = () => { photo = null; render(); }; $('clrLogo').onclick = () => { logo = null; render(); };
+const fname = ext => `${T[key].label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${$('fmt').value}.${ext}`;
+$('png').onclick = () => $('cv').toBlob(b => Hub.download(b, fname('png')), 'image/png');
+$('jpg').onclick = () => $('cv').toBlob(b => Hub.download(b, fname('jpg')), 'image/jpeg', .92);
+$('copyCap').onclick = async () => { try { await navigator.clipboard.writeText($('caption').value); Hub.toast('Caption copied.'); } catch (e) { $('caption').select(); Hub.toast('Press Ctrl+C to copy.'); } };
+load('hiring');
+</script>
+</body>
+</html>

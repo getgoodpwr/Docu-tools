@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mail Merge to PDF · GoodPWR HR Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=Jost:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="../assets/hub.css">
+<style>
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid var(--line);background:#fff;border-radius:14px;padding:3px 10px;font-family:var(--f-mono);font-size:12px}
+.chips button:hover{border-color:var(--accent);background:var(--accent-soft)}
+#tpl{min-height:300px;font-family:Georgia,serif;font-size:14.5px;line-height:1.55}
+.letter{background:#fff;width:100%;max-width:640px;aspect-ratio:8.5/11;box-shadow:0 1px 3px rgba(0,0,0,.16),0 8px 24px rgba(0,0,0,.10);padding:7% 9%;font-size:clamp(9px,1.45vw,13px);line-height:1.45;color:#111;overflow:hidden;position:relative}
+.letter .lh{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--lh, #2E7D4F);padding-bottom:8px;margin-bottom:18px}
+.letter .lh b{font-family:Helvetica,Arial,sans-serif;font-size:1.5em}
+.letter .lh small{display:block;font-size:.8em;color:#555;text-align:right;white-space:pre-line}
+.letter .lh img{max-height:40px}
+.letter .body{white-space:pre-wrap}
+.letter .miss{background:#fbdcd9;color:#8c1d16;border-radius:3px;padding:0 2px}
+.fieldtag{position:absolute;border:1.5px dashed #3b6fd8;background:rgba(59,111,216,.08);color:#123;white-space:nowrap;cursor:move;touch-action:none;line-height:1;padding:1px 2px}
+.fieldtag.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.sheet.place{cursor:crosshair}
+.recnav{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:13px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head"><h1>Mail Merge to PDF</h1><span class="replaces">Instead of Formstack Documents or Word mail merge add-ons</span>
+    <p>Combine one template with a spreadsheet to make a personalized PDF for every row: letters, notices, certificates, badges.</p></div>
+  <div class="cols wide-left">
+    <aside>
+      <div class="panel stack">
+        <h2>1 · Spreadsheet</h2>
+        <div class="drop" id="dropData"><strong>Choose a CSV or Excel file</strong><span class="muted">The first row should have column names</span></div>
+        <p class="small muted" id="dataInfo" style="margin:0">Using example data until you load your own.</p>
+        <div class="field"><label>Columns, click to insert</label><div class="chips" id="chips"></div></div>
+      </div>
+      <div class="panel stack">
+        <h2>2 · Template</h2>
+        <div class="seg" id="mode"><button data-m="letter" aria-pressed="true">Write a letter</button><button data-m="pdf" aria-pressed="false">Use my PDF</button></div>
+        <div id="letterOpts" class="stack">
+          <div class="field"><label for="tpl">Letter text</label><textarea id="tpl"></textarea></div>
+          <div class="grid2">
+            <div class="field"><label for="font">Font</label><select id="font"><option value="TimesRoman">Times</option><option value="Helvetica">Helvetica</option></select></div>
+            <div class="field"><label for="fsize">Size</label><input type="number" id="fsize" value="11" min="8" max="16"></div>
+          </div>
+          <label class="check"><input type="checkbox" id="useLh" checked> GoodPWR letterhead</label>
+          <div class="field" id="lhWrap"><label for="addr">Letterhead address</label><textarea id="addr" style="min-height:60px">GoodPWR
+getgoodpwr.com</textarea></div>
+          <div class="drop" id="dropLogo" style="padding:12px"><strong style="font-size:14px">Logo for letterhead (optional)</strong><span class="muted">PNG or JPG</span></div>
+        </div>
+        <div id="pdfOpts" class="stack" hidden>
+          <div class="drop" id="dropPdf"><strong>Choose your template PDF</strong><span class="muted">e.g. a certificate or form, first page is used</span></div>
+          <div class="field"><label for="addCol">Add a field</label><select id="addCol"></select></div>
+          <p class="small muted" style="margin:0">Pick a column, then click on the page where it goes. Drag to move.</p>
+          <div class="stack" id="tagProps" hidden>
+            <div class="grid3">
+              <div class="field"><label for="tSize">Size</label><input type="number" id="tSize" min="6" max="96"></div>
+              <div class="field"><label for="tAlign">Align</label><select id="tAlign"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></div>
+              <div class="field"><label for="tColor">Color</label><input type="color" id="tColor"></div>
+            </div>
+            <div class="row"><select id="tFont" class="input" style="flex:1"><option value="Helvetica">Helvetica</option><option value="HelveticaBold">Helvetica Bold</option><option value="TimesRoman">Times</option><option value="TimesRomanBold">Times Bold</option><option value="TimesRomanItalic">Times Italic</option></select><button class="btn sm danger" id="tDel">Remove</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel stack">
+        <h2>3 · Output</h2>
+        <div class="seg" id="out"><button data-o="zip" aria-pressed="true">One PDF per row (ZIP)</button><button data-o="one" aria-pressed="false">All in one PDF</button></div>
+        <div class="field"><label for="fname">File name pattern</label><input type="text" id="fname" value="{{Full Name}} - Letter"></div>
+        <button class="btn primary" id="go">Generate PDFs</button>
+        <div class="progress" id="prog" hidden><i></i></div>
+      </div>
+    </aside>
+    <section class="stack">
+      <div class="row between"><h2 class="lbl" style="margin:0">Preview</h2>
+        <div class="recnav"><button class="btn sm" id="prev">‹</button><span id="recLbl"></span><button class="btn sm" id="next">›</button></div></div>
+      <div class="stage" id="stage"></div>
+    </section>
+  </div>
+</main>
+<script src="../assets/hub.js"></script>
+<script>
+Hub.mount('Mail Merge to PDF');
+const $ = id => document.getElementById(id);
+const S = {
+  headers: ['Full Name', 'Position', 'Start Date', 'Manager'],
+  rows: [
+    { 'Full Name': 'Alex Morgan', Position: 'Field Technician', 'Start Date': 'November 3, 2026', Manager: 'Dana Lee' },
+    { 'Full Name': 'Priya Shah', Position: 'Project Coordinator', 'Start Date': 'November 10, 2026', Manager: 'Sam Ortiz' },
+    { 'Full Name': 'Marco Reyes', Position: 'Installer', 'Start Date': 'November 17, 2026', Manager: 'Dana Lee' }
+  ],
+  mode: 'letter', out: 'zip', rec: 0, logo: null, pdf: null, tags: [], sel: null, pv: null, sample: true
+};
+let uid = 1;
+$('tpl').value = `{{Today}}
+
+Dear {{Full Name}},
+
+Welcome to GoodPWR! We are excited to confirm your start date of {{Start Date}} as {{Position}}.
+
+On your first day, please report to the main office at 8:00 AM. Your manager, {{Manager}}, will meet you there and walk you through orientation, safety training and your equipment.
+
+If you have any questions before then, reply to this letter or call the HR team.
+
+Sincerely,
+
+
+Human Resources
+GoodPWR`;
+const today = () => new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+const fill = (s, r) => s.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, k) => k === 'Today' ? today() : (r[k] ?? ''));
+const missing = (s, r) => [...s.matchAll(/\{\{\s*([^}]+?)\s*\}\}/g)].map(m => m[1]).filter(k => k !== 'Today' && !(k in r));
+
+function renderChips() {
+  $('chips').innerHTML = ['Today', ...S.headers].map(h => `<button data-h="${Hub.esc(h)}">{{${Hub.esc(h)}}}</button>`).join('');
+  $('addCol').innerHTML = '<option value="">Choose a column…</option>' + S.headers.map(h => `<option>${Hub.esc(h)}</option>`).join('');
+  $('dataInfo').textContent = S.sample ? 'Using example data until you load your own.' : `${S.rows.length} rows · ${S.headers.length} columns`;
+}
+$('chips').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return; const tag = `{{${b.dataset.h}}}`;
+  if (S.mode === 'letter') { const t = $('tpl'), a = t.selectionStart, z = t.selectionEnd; t.value = t.value.slice(0, a) + tag + t.value.slice(z); t.focus(); t.selectionStart = t.selectionEnd = a + tag.length; preview(); }
+  else { $('addCol').value = b.dataset.h; $('addCol').dispatchEvent(new Event('change')); }
+};
+Hub.dropzone($('dropData'), { accept: '.csv,.txt,.xlsx,.xls', onFiles: async ([f]) => {
+  try { const t = await Hub.readTable(f); if (!t.rows.length) throw new Error('empty'); S.headers = t.headers; S.rows = t.rows; S.sample = false; S.rec = 0; renderChips(); preview(); Hub.toast(`Loaded ${t.rows.length} rows.`); }
+  catch (e) { Hub.toast('That spreadsheet could not be read. Save it as CSV or XLSX with column names in the first row.'); }
+} });
+Hub.dropzone($('dropLogo'), { accept: 'image/png,image/jpeg', onFiles: async ([f]) => { S.logo = { url: await Hub.dataURL(f), png: f.type === 'image/png' }; preview(); } });
+$('mode').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.mode = b.dataset.m; $('mode').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); $('letterOpts').hidden = S.mode !== 'letter'; $('pdfOpts').hidden = S.mode !== 'pdf'; preview(); };
+$('out').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.out = b.dataset.o; $('out').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); };
+['tpl', 'addr', 'fsize', 'font'].forEach(id => $(id).addEventListener('input', preview));
+$('useLh').onchange = () => { $('lhWrap').hidden = !$('useLh').checked; preview(); };
+$('prev').onclick = () => { S.rec = (S.rec - 1 + S.rows.length) % S.rows.length; preview(); };
+$('next').onclick = () => { S.rec = (S.rec + 1) % S.rows.length; preview(); };
+
+/* ---------- letter preview ---------- */
+function preview() {
+  $('recLbl').textContent = `Row ${S.rec + 1} of ${S.rows.length}`;
+  const r = S.rows[S.rec] || {}, st = $('stage');
+  if (S.mode === 'letter') {
+    const body = Hub.esc($('tpl').value).replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, k) => k === 'Today' ? today() : (k in r ? Hub.esc(r[k]) : `<span class="miss" title="No column named ${Hub.esc(k)}">{{${Hub.esc(k)}}}</span>`));
+    st.innerHTML = `<div class="letter" style="font-family:${$('font').value === 'TimesRoman' ? 'Georgia,Times,serif' : 'Helvetica,Arial,sans-serif'}">${$('useLh').checked ? `<div class="lh">${S.logo ? `<img src="${S.logo.url}" alt="">` : '<b>GoodPWR</b>'}<small>${Hub.esc($('addr').value)}</small></div>` : ''}<div class="body">${body}</div></div>`;
+  } else drawPdfPreview();
+}
+
+/* ---------- PDF template mode ---------- */
+Hub.dropzone($('dropPdf'), { accept: 'application/pdf,.pdf', onFiles: async ([f]) => {
+  try { const bytes = await Hub.bytes(f), doc = await Hub.openPdf(bytes); S.pdf = { bytes, name: f.name, page: await doc.getPage(1) }; S.tags = []; S.pv = null; preview(); }
+  catch (e) { Hub.toast(e.message); }
+} });
+async function drawPdfPreview() {
+  const st = $('stage');
+  if (!S.pdf) { st.innerHTML = '<p class="empty-note">Choose the PDF you want to fill, such as a certificate or form.</p>'; return; }
+  if (!S.pv) {
+    const v1 = S.pdf.page.getViewport({ scale: 1 }), scale = Math.min((st.clientWidth - 40) / v1.width, 1.4);
+    const sh = document.createElement('div'); sh.className = 'sheet place';
+    const { canvas, viewport } = await Hub.renderPage(S.pdf.page, scale);
+    sh.style.width = viewport.width + 'px'; sh.style.height = viewport.height + 'px'; sh.appendChild(canvas);
+    S.pv = { el: sh, scale, v1 }; sh.addEventListener('pointerdown', sheetDown);
+  }
+  st.innerHTML = ''; st.appendChild(S.pv.el); drawTags();
+}
+function drawTags() {
+  if (!S.pv) return; const r = S.rows[S.rec] || {}, sc = S.pv.scale;
+  S.pv.el.querySelectorAll('.fieldtag').forEach(n => n.remove());
+  for (const t of S.tags) {
+    const d = document.createElement('div'); d.className = 'fieldtag' + (t.id === S.sel ? ' sel' : ''); d.dataset.id = t.id;
+    d.textContent = (r[t.col] ?? '') || `{{${t.col}}}`;
+    const bold = /Bold/.test(t.font), it = /Italic/.test(t.font), serif = /Times/.test(t.font);
+    Object.assign(d.style, { fontSize: t.size * sc + 'px', color: t.color, fontWeight: bold ? 700 : 400, fontStyle: it ? 'italic' : 'normal', fontFamily: serif ? 'Times,serif' : 'Helvetica,Arial,sans-serif' });
+    S.pv.el.appendChild(d);
+    const w = d.offsetWidth, left = t.align === 'center' ? t.x * sc - w / 2 : t.align === 'right' ? t.x * sc - w : t.x * sc;
+    d.style.left = left + 'px'; d.style.top = (t.y - t.size * .85) * sc + 'px';
+  }
+}
+let drag = null;
+function sheetDown(e) {
+  const r = S.pv.el.getBoundingClientRect(), x = (e.clientX - r.left) / S.pv.scale, y = (e.clientY - r.top) / S.pv.scale, hit = e.target.closest('.fieldtag');
+  if (hit) { const t = S.tags.find(q => q.id === +hit.dataset.id); selectTag(t.id); drag = { t, sx: x, sy: y, ox: t.x, oy: t.y }; S.pv.el.setPointerCapture(e.pointerId); return; }
+  const col = $('addCol').value; if (!col) { selectTag(null); return; }
+  const t = { id: uid++, col, x, y: y + 8, size: 18, align: 'left', color: '#111111', font: 'Helvetica' }; S.tags.push(t); $('addCol').value = ''; selectTag(t.id);
+}
+document.addEventListener('pointermove', e => { if (!drag) return; const r = S.pv.el.getBoundingClientRect(); drag.t.x = drag.ox + (e.clientX - r.left) / S.pv.scale - drag.sx; drag.t.y = drag.oy + (e.clientY - r.top) / S.pv.scale - drag.sy; drawTags(); });
+document.addEventListener('pointerup', () => { drag = null; });
+function selectTag(id) {
+  S.sel = id; const t = S.tags.find(q => q.id === id); $('tagProps').hidden = !t;
+  if (t) { $('tSize').value = t.size; $('tAlign').value = t.align; $('tColor').value = t.color; $('tFont').value = t.font; }
+  drawTags();
+}
+const curTag = () => S.tags.find(q => q.id === S.sel);
+$('tSize').oninput = e => { curTag().size = +e.target.value || 12; drawTags(); };
+$('tAlign').onchange = e => { const t = curTag(); t.align = e.target.value; drawTags(); };
+$('tColor').oninput = e => { curTag().color = e.target.value; drawTags(); };
+$('tFont').onchange = e => { curTag().font = e.target.value; drawTags(); };
+$('tDel').onclick = () => { S.tags = S.tags.filter(q => q.id !== S.sel); selectTag(null); };
+
+/* ---------- generate ---------- */
+async function buildLetter(doc, r, fonts) {
+  const W = 612, H = 792, M = 72, size = +$('fsize').value || 11, font = fonts.body, lh = size * 1.45, { rgb } = PDFLib;
+  let page = doc.addPage([W, H]), y = H - M;
+  if ($('useLh').checked) {
+    if (fonts.logo) { const s = Math.min(40 / fonts.logo.height, 160 / fonts.logo.width); page.drawImage(fonts.logo, { x: M, y: H - 52 - fonts.logo.height * s, width: fonts.logo.width * s, height: fonts.logo.height * s }); }
+    else page.drawText('GoodPWR', { x: M, y: H - 72, size: 20, font: fonts.bold, color: rgb(.12, .13, .15) });
+    $('addr').value.split('\n').forEach((l, i) => { const t = Hub.winAnsi(l), w = fonts.sans.widthOfTextAtSize(t, 8.5); page.drawText(t, { x: W - M - w, y: H - 58 - i * 11, size: 8.5, font: fonts.sans, color: rgb(.35, .35, .35) }); });
+    page.drawLine({ start: { x: M, y: H - 92 }, end: { x: W - M, y: H - 92 }, thickness: 1.5, color: Hub.hexRgb('#2E7D4F') });
+    y = H - 122;
+  }
+  for (const line of Hub.wrap(Hub.winAnsi(fill($('tpl').value, r)), font, size, W - 2 * M)) {
+    if (y < M) { page = doc.addPage([W, H]); y = H - M; }
+    if (line) page.drawText(line, { x: M, y, size, font, color: rgb(.07, .07, .07) });
+    y -= lh;
+  }
+}
+async function buildFromPdf(doc, r, tpl, fonts) {
+  const [pg] = await doc.copyPages(tpl, [0]); doc.addPage(pg);
+  for (const t of S.tags) {
+    const txt = Hub.winAnsi(r[t.col] ?? ''); if (!txt) continue;
+    const f = fonts[t.font] || (fonts[t.font] = await doc.embedFont(PDFLib.StandardFonts[t.font])), w = f.widthOfTextAtSize(txt, t.size);
+    const ax = t.align === 'center' ? t.x - w / 2 : t.align === 'right' ? t.x - w : t.x;
+    const [x, y] = S.pv.v1.convertToPdfPoint(ax, t.y);
+    pg.drawText(txt, { x, y, size: t.size, font: f, color: Hub.hexRgb(t.color) });
+  }
+}
+$('go').onclick = async () => {
+  if (S.mode === 'pdf' && (!S.pdf || !S.tags.length)) { Hub.toast(S.pdf ? 'Add at least one field to the page.' : 'Choose your template PDF first.'); return; }
+  if (S.mode === 'letter') { const miss = missing($('tpl').value, S.rows[0] || {}); if (miss.length) { Hub.toast(`No column named: ${miss.join(', ')}. Fix the template or the spreadsheet.`, 5000); return; } }
+  $('go').disabled = true; $('prog').hidden = false; const bar = $('prog').firstElementChild;
+  try {
+    await Hub.load('pdflib');
+    const { PDFDocument, StandardFonts } = PDFLib, files = [], one = S.out === 'one' ? await PDFDocument.create() : null;
+    const tpl = S.mode === 'pdf' ? await PDFDocument.load(S.pdf.bytes, { ignoreEncryption: true }) : null;
+    let shared = null;
+    const used = new Set();
+    for (let i = 0; i < S.rows.length; i++) {
+      const r = S.rows[i], doc = one || await PDFDocument.create();
+      let fonts = one ? shared : null;
+      if (!fonts) {
+        fonts = { body: await doc.embedFont(StandardFonts[$('font').value]), bold: await doc.embedFont(StandardFonts.HelveticaBold), sans: await doc.embedFont(StandardFonts.Helvetica) };
+        if (S.logo && S.mode === 'letter') fonts.logo = S.logo.png ? await doc.embedPng(S.logo.url) : await doc.embedJpg(S.logo.url);
+        if (one) shared = fonts;
+      }
+      if (S.mode === 'letter') await buildLetter(doc, r, fonts); else await buildFromPdf(doc, r, tpl, fonts);
+      if (!one) {
+        let nm = (fill($('fname').value, r).replace(/[\\/:*?"<>|]+/g, '-').trim() || `document-${i + 1}`), base = nm, k = 2;
+        while (used.has(nm)) nm = `${base} (${k++})`; used.add(nm);
+        files.push({ name: nm + '.pdf', data: await doc.save() });
+      }
+      bar.style.width = ((i + 1) / S.rows.length * 100) + '%';
+      if (i % 20 === 19) await new Promise(r => setTimeout(r));
+    }
+    if (one) Hub.download(await one.save(), 'mail-merge.pdf', 'application/pdf');
+    else if (files.length === 1) Hub.download(files[0].data, files[0].name, 'application/pdf');
+    else await Hub.zip(files, 'mail-merge.zip');
+    Hub.toast(`Generated ${S.rows.length} document${S.rows.length > 1 ? 's' : ''}.`);
+  } catch (e) { console.error(e); Hub.toast('Could not generate: ' + e.message); }
+  $('go').disabled = false; setTimeout(() => { $('prog').hidden = true; bar.style.width = 0; }, 800);
+};
+renderChips(); preview();
+</script>
+</body>
+</html>

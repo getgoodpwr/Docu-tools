@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sign a PDF · GoodPWR HR Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=Jost:wght@400;500;600&family=IBM+Plex+Mono:wght@400&family=Great+Vibes&family=Dancing+Script:wght@600&family=Allura&family=Homemade+Apple&display=swap">
+<link rel="stylesheet" href="../assets/hub.css">
+<style>
+.pad{border:1px solid var(--line);border-radius:6px;background:#fff;touch-action:none;width:100%;height:150px;display:block;cursor:crosshair}
+.typed-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.typed-opts button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:8px;font-size:26px;line-height:1.1;color:#14213d;overflow:hidden;white-space:nowrap}
+.typed-opts button[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.preview-sig{height:64px;border:1px dashed var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;background:#fff}
+.preview-sig img{max-height:56px}
+.place-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.item{position:absolute;border:1px dashed transparent;cursor:move;touch-action:none}
+.item:hover,.item.sel{border-color:var(--accent)}
+.item img{width:100%;height:100%;display:block;pointer-events:none}
+.item .txt{white-space:pre;font-family:Helvetica,Arial,sans-serif;color:#111;line-height:1;outline:none;cursor:text;min-width:10px;display:block}
+.item .h{position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;background:var(--accent);border-radius:2px;cursor:nwse-resize;display:none}
+.item .x{position:absolute;right:-10px;top:-10px;width:20px;height:20px;border-radius:50%;border:0;background:var(--ink);color:#fff;font-size:12px;line-height:20px;padding:0;display:none}
+.item.sel .h,.item.sel .x{display:block}
+.sheet.placing{cursor:copy}
+.pg-label{font-size:12px;color:var(--muted);font-family:var(--f-mono);margin-bottom:-12px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head"><h1>Sign a PDF</h1><span class="replaces">Instead of DocuSign or Adobe Sign for self-signing</span>
+    <p>Create your signature once, place it anywhere on the document, add initials and dates, then download the signed copy.</p></div>
+  <div class="cols">
+    <aside>
+      <div class="panel stack">
+        <h2>1 · Document</h2>
+        <div class="drop" id="drop"><strong>Choose a PDF</strong><span class="muted">or drop it here</span></div>
+        <div class="row between small" id="docInfo" hidden><span class="mono" id="docName"></span><button class="btn sm" id="swap">Change file</button></div>
+      </div>
+      <div class="panel stack">
+        <h2>2 · Your signature</h2>
+        <div class="seg" id="kindSeg"><button aria-pressed="true" data-k="sig">Signature</button><button aria-pressed="false" data-k="ini">Initials</button></div>
+        <div class="seg" id="modeSeg"><button aria-pressed="true" data-m="type">Type</button><button aria-pressed="false" data-m="draw">Draw</button><button aria-pressed="false" data-m="upload">Upload</button></div>
+        <div id="mType" class="stack">
+          <div class="field"><label for="typedName">Name</label><input type="text" id="typedName" value="Jordan Rivera"></div>
+          <div class="typed-opts" id="typedOpts"></div>
+        </div>
+        <div id="mDraw" class="stack" hidden>
+          <canvas class="pad" id="pad"></canvas>
+          <div class="row between"><span class="small muted">Sign with your mouse, finger or stylus</span><button class="btn sm" id="clearPad">Clear</button></div>
+        </div>
+        <div id="mUpload" class="stack" hidden>
+          <div class="drop" id="sigDrop" style="padding:16px"><strong style="font-size:14px">Upload a signature image</strong><span class="muted">PNG or JPG; white background is removed</span></div>
+        </div>
+        <div class="field"><label for="inkColor">Ink</label>
+          <select id="inkColor"><option value="#14213d">Navy</option><option value="#111111">Black</option><option value="#1f4fd1">Blue</option></select></div>
+        <div class="grid2">
+          <div><div class="lbl" style="margin-bottom:4px">Signature</div><div class="preview-sig" id="pvSig"><span class="small muted">None yet</span></div></div>
+          <div><div class="lbl" style="margin-bottom:4px">Initials</div><div class="preview-sig" id="pvIni"><span class="small muted">None yet</span></div></div>
+        </div>
+      </div>
+      <div class="panel stack">
+        <h2>3 · Place on the page</h2>
+        <div class="place-btns">
+          <button class="btn" data-add="sig">Signature</button>
+          <button class="btn" data-add="ini">Initials</button>
+          <button class="btn" data-add="date">Date</button>
+          <button class="btn" data-add="text">Text</button>
+          <button class="btn" data-add="check">Checkmark</button>
+          <button class="btn" data-add="name">Printed name</button>
+        </div>
+        <div class="field"><label for="dateFmt">Date format</label>
+          <select id="dateFmt"><option value="us">MM/DD/YYYY</option><option value="long">Month DD, YYYY</option><option value="iso">YYYY-MM-DD</option><option value="intl">DD/MM/YYYY</option></select></div>
+        <p class="small muted" id="placeHint" style="margin:0">Pick an item, then click on the page where it goes. Drag to move, use the corner to resize.</p>
+        <button class="btn primary" id="save" disabled>Download signed PDF</button>
+      </div>
+    </aside>
+    <section class="stage" id="stage"><p class="empty-note">Choose a PDF to start. You can also <a href="#" id="sample">try a sample document</a>.</p></section>
+  </div>
+</main>
+<script src="../assets/hub.js"></script>
+<script>
+Hub.mount('Sign a PDF');
+const $ = id => document.getElementById(id);
+const FONTS = ['Great Vibes', 'Dancing Script', 'Allura', 'Homemade Apple'];
+const S = { bytes: null, name: '', pdf: null, pages: [], items: [], sel: null, kind: 'sig', mode: 'type', font: FONTS[0], sig: null, ini: null, placing: null };
+let uid = 1;
+
+/* ---------- signature creation ---------- */
+function renderTypedOpts() {
+  const name = $('typedName').value || 'Your Name', txt = S.kind === 'ini' ? initialsOf(name) : name;
+  $('typedOpts').innerHTML = '';
+  FONTS.forEach(f => {
+    const b = document.createElement('button'); b.textContent = txt; b.style.fontFamily = `"${f}", cursive`; b.style.color = $('inkColor').value;
+    b.setAttribute('aria-pressed', f === S.font); b.title = f;
+    b.onclick = () => { S.font = f; renderTypedOpts(); makeTyped(); };
+    $('typedOpts').appendChild(b);
+  });
+}
+const initialsOf = n => n.trim().split(/\s+/).map(w => w[0] || '').join('').toUpperCase().slice(0, 3);
+async function makeTyped() {
+  const name = $('typedName').value.trim(); if (!name) return;
+  const txt = S.kind === 'ini' ? initialsOf(name) : name;
+  await document.fonts.load(`80px "${S.font}"`);
+  const c = document.createElement('canvas'), ctx = c.getContext('2d'), fs = 120;
+  ctx.font = `${fs}px "${S.font}"`; const w = Math.ceil(ctx.measureText(txt).width) + 60;
+  c.width = w; c.height = Math.round(fs * 1.6);
+  ctx.font = `${fs}px "${S.font}"`; ctx.fillStyle = $('inkColor').value; ctx.textBaseline = 'middle'; ctx.fillText(txt, 30, c.height / 2);
+  setMark(trimCanvas(c));
+}
+function trimCanvas(c) {
+  const ctx = c.getContext('2d'), { width: w, height: h } = c, d = ctx.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = 0, y1 = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 10) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < x0) return null;
+  const p = 6, o = document.createElement('canvas'); o.width = x1 - x0 + p * 2; o.height = y1 - y0 + p * 2;
+  o.getContext('2d').drawImage(c, x0 - p, y0 - p, o.width, o.height, 0, 0, o.width, o.height);
+  return { url: o.toDataURL('image/png'), ratio: o.width / o.height };
+}
+function setMark(m) {
+  if (!m) return;
+  S[S.kind] = m;
+  const box = S.kind === 'sig' ? $('pvSig') : $('pvIni'); box.innerHTML = ''; const im = new Image(); im.src = m.url; im.alt = ''; box.appendChild(im);
+}
+// drawing pad
+const pad = $('pad'); let drawing = false, last = null;
+function sizePad() { const r = pad.getBoundingClientRect(); if (!r.width) return; pad.width = r.width * 2; pad.height = r.height * 2; }
+pad.addEventListener('pointerdown', e => { drawing = true; pad.setPointerCapture(e.pointerId); last = padPt(e); });
+pad.addEventListener('pointermove', e => {
+  if (!drawing) return; const p = padPt(e), ctx = pad.getContext('2d');
+  ctx.strokeStyle = $('inkColor').value; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(last[0], last[1]); ctx.lineTo(p[0], p[1]); ctx.stroke(); last = p;
+});
+const endPad = () => { if (!drawing) return; drawing = false; setMark(trimCanvas(pad)); };
+pad.addEventListener('pointerup', endPad); pad.addEventListener('pointercancel', endPad);
+function padPt(e) { const r = pad.getBoundingClientRect(); return [(e.clientX - r.left) * pad.width / r.width, (e.clientY - r.top) * pad.height / r.height]; }
+$('clearPad').onclick = () => pad.getContext('2d').clearRect(0, 0, pad.width, pad.height);
+Hub.dropzone($('sigDrop'), { accept: 'image/*', onFiles: async ([f]) => {
+  const img = await Hub.loadImage(await Hub.dataURL(f)), c = document.createElement('canvas');
+  const sc = Math.min(1, 1200 / img.width); c.width = img.width * sc; c.height = img.height * sc;
+  const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, c.width, c.height);
+  const id = ctx.getImageData(0, 0, c.width, c.height), d = id.data;
+  for (let i = 0; i < d.length; i += 4) { const l = (d[i] + d[i + 1] + d[i + 2]) / 3; if (l > 215) d[i + 3] = 0; else if (l > 160) d[i + 3] = Math.round(d[i + 3] * (215 - l) / 55); }
+  ctx.putImageData(id, 0, 0); setMark(trimCanvas(c));
+} });
+function setSeg(seg, attr, val) { seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset[attr] === val)); }
+$('kindSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.kind = b.dataset.k; setSeg($('kindSeg'), 'k', S.kind); renderTypedOpts(); };
+$('modeSeg').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return; S.mode = b.dataset.m; setSeg($('modeSeg'), 'm', S.mode);
+  $('mType').hidden = S.mode !== 'type'; $('mDraw').hidden = S.mode !== 'draw'; $('mUpload').hidden = S.mode !== 'upload';
+  if (S.mode === 'draw') requestAnimationFrame(sizePad);
+};
+$('typedName').addEventListener('input', () => { renderTypedOpts(); clearTimeout(makeTyped.t); makeTyped.t = setTimeout(makeTyped, 300); });
+$('inkColor').onchange = () => { renderTypedOpts(); if (S.mode === 'type') makeTyped(); };
+
+/* ---------- document ---------- */
+async function openDoc(bytes, name) {
+  try {
+    S.pdf = await Hub.openPdf(bytes); S.bytes = bytes; S.name = name; S.items = []; S.sel = null;
+    $('drop').hidden = true; $('docInfo').hidden = false; $('docName').textContent = `${name} · ${S.pdf.numPages} page${S.pdf.numPages > 1 ? 's' : ''}`;
+    $('save').disabled = false; await renderPages();
+  } catch (e) { Hub.toast(e.message); }
+}
+async function renderPages() {
+  const st = $('stage'); st.innerHTML = ''; S.pages = [];
+  const avail = Math.max(260, st.clientWidth - 40);
+  for (let i = 1; i <= S.pdf.numPages; i++) {
+    const pg = await S.pdf.getPage(i), v1 = pg.getViewport({ scale: 1 }), scale = Math.min(avail / v1.width, 1.5);
+    const lab = document.createElement('div'); lab.className = 'pg-label'; lab.textContent = `Page ${i}`; st.appendChild(lab);
+    const sh = document.createElement('div'); sh.className = 'sheet'; sh.dataset.p = i - 1;
+    const { canvas, viewport } = await Hub.renderPage(pg, scale);
+    sh.style.width = viewport.width + 'px'; sh.style.height = viewport.height + 'px'; sh.appendChild(canvas); st.appendChild(sh);
+    S.pages.push({ el: sh, vp: viewport, v1, scale });
+    sh.addEventListener('pointerdown', e => onSheetDown(e, i - 1));
+  }
+  drawItems();
+}
+const drop = Hub.dropzone($('drop'), { accept: 'application/pdf,.pdf', onFiles: async ([f]) => openDoc(await Hub.bytes(f), f.name) });
+$('swap').onclick = () => drop.click();
+$('sample').onclick = async e => { e.preventDefault(); openDoc(await Hub.samplePdf(['I agree to the terms of this acknowledgment.', '', '', '', 'Employee signature: ______________________', '', 'Date: ____________', '', 'Initials: ______'], 'Policy Acknowledgment'), 'sample-acknowledgment.pdf'); };
+
+/* ---------- items ---------- */
+function fmtDate(d = new Date()) {
+  const m = d.getMonth() + 1, dd = d.getDate(), y = d.getFullYear(), p = n => String(n).padStart(2, '0');
+  return { us: `${p(m)}/${p(dd)}/${y}`, iso: `${y}-${p(m)}-${p(dd)}`, intl: `${p(dd)}/${p(m)}/${y}`, long: d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }[$('dateFmt').value];
+}
+document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
+  const k = b.dataset.add;
+  if ((k === 'sig' || k === 'ini') && !S[k]) { Hub.toast(k === 'sig' ? 'Create your signature first.' : 'Switch to Initials and create them first.'); return; }
+  if (!S.pdf) { Hub.toast('Choose a PDF first.'); return; }
+  S.placing = k; S.pages.forEach(p => p.el.classList.add('placing')); $('placeHint').textContent = 'Now click on the page where it should go.';
+});
+function onSheetDown(e, pi) {
+  if (!S.placing) { if (!e.target.closest('.item')) { S.sel = null; drawItems(); } return; }
+  const p = S.pages[pi], r = p.el.getBoundingClientRect(), x = (e.clientX - r.left) / p.scale, y = (e.clientY - r.top) / p.scale, k = S.placing;
+  let it;
+  if (k === 'sig' || k === 'ini') { const m = S[k], w = k === 'sig' ? 160 : 60; it = { type: 'img', url: m.url, w, h: w / m.ratio }; }
+  else if (k === 'check') it = { type: 'text', text: '✓', size: 18 };
+  else if (k === 'date') it = { type: 'text', text: fmtDate(), size: 11 };
+  else if (k === 'name') it = { type: 'text', text: $('typedName').value || 'Your Name', size: 11 };
+  else it = { type: 'text', text: 'Type here', size: 11 };
+  it.id = uid++; it.page = pi; it.x = x - (it.w || 0) / 2; it.y = y - (it.h || it.size) / 2;
+  S.items.push(it); S.sel = it.id; S.placing = null; S.pages.forEach(q => q.el.classList.remove('placing'));
+  $('placeHint').textContent = 'Drag to move, use the corner to resize. Click text to edit it.';
+  drawItems(); if (k === 'text') focusText(it.id);
+}
+function drawItems() {
+  document.querySelectorAll('.item').forEach(n => n.remove());
+  for (const it of S.items) {
+    const p = S.pages[it.page]; if (!p) continue; const sc = p.scale, d = document.createElement('div');
+    d.className = 'item' + (it.id === S.sel ? ' sel' : ''); d.dataset.id = it.id;
+    d.style.left = it.x * sc + 'px'; d.style.top = it.y * sc + 'px';
+    if (it.type === 'img') { d.style.width = it.w * sc + 'px'; d.style.height = it.h * sc + 'px'; d.innerHTML = `<img src="${it.url}" alt="">`; }
+    else { const t = document.createElement('span'); t.className = 'txt'; t.textContent = it.text; t.style.fontSize = it.size * sc + 'px'; t.style.color = it.text === '✓' ? '#111' : '#111'; d.appendChild(t);
+      t.addEventListener('dblclick', () => focusText(it.id)); }
+    d.insertAdjacentHTML('beforeend', '<span class="h" aria-hidden="true"></span><button class="x" aria-label="Remove">✕</button>');
+    d.querySelector('.x').addEventListener('pointerdown', e => { e.stopPropagation(); S.items = S.items.filter(q => q.id !== it.id); S.sel = null; drawItems(); });
+    d.addEventListener('pointerdown', e => startDrag(e, it, d));
+    p.el.appendChild(d);
+  }
+}
+function focusText(id) {
+  const d = document.querySelector(`.item[data-id="${id}"] .txt`), it = S.items.find(q => q.id === id); if (!d) return;
+  d.contentEditable = 'true'; d.focus(); const r = document.createRange(); r.selectNodeContents(d); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  d.onblur = () => { d.contentEditable = 'false'; it.text = d.innerText.replace(/\n$/, ''); if (!it.text.trim()) { S.items = S.items.filter(q => q.id !== id); drawItems(); } };
+  d.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); d.blur(); } };
+}
+let drag = null;
+function startDrag(e, it, el) {
+  if (e.target.isContentEditable) return;
+  e.stopPropagation(); S.sel = it.id; document.querySelectorAll('.item').forEach(n => n.classList.toggle('sel', +n.dataset.id === it.id));
+  const resize = e.target.classList.contains('h');
+  drag = { it, el, resize, sx: e.clientX, sy: e.clientY, o: { ...it }, sc: S.pages[it.page].scale }; el.setPointerCapture(e.pointerId);
+}
+document.addEventListener('pointermove', e => {
+  if (!drag) return; const { it, el, o, sc } = drag, dx = (e.clientX - drag.sx) / sc, dy = (e.clientY - drag.sy) / sc;
+  if (drag.resize) {
+    if (it.type === 'img') { it.w = Math.max(20, o.w + dx); it.h = it.w * (o.h / o.w); el.style.width = it.w * sc + 'px'; el.style.height = it.h * sc + 'px'; }
+    else { it.size = Math.max(6, Math.min(72, o.size + dy * .6)); el.querySelector('.txt').style.fontSize = it.size * sc + 'px'; }
+  } else { it.x = o.x + dx; it.y = o.y + dy; el.style.left = it.x * sc + 'px'; el.style.top = it.y * sc + 'px'; }
+});
+document.addEventListener('pointerup', () => { drag = null; });
+document.addEventListener('keydown', e => {
+  if (e.target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+  if ((e.key === 'Delete' || e.key === 'Backspace') && S.sel) { S.items = S.items.filter(q => q.id !== S.sel); S.sel = null; drawItems(); }
+});
+
+/* ---------- export ---------- */
+$('save').onclick = async () => {
+  if (!S.items.length) { Hub.toast('Place your signature on the page first.'); return; }
+  $('save').disabled = true; $('save').textContent = 'Building…';
+  try {
+    await Hub.load('pdflib');
+    const { PDFDocument, StandardFonts, degrees, rgb } = PDFLib;
+    const doc = await PDFDocument.load(S.bytes, { ignoreEncryption: true });
+    try { doc.getForm().flatten(); } catch (e) {}
+    const font = await doc.embedFont(StandardFonts.Helvetica), sym = await doc.embedFont(StandardFonts.ZapfDingbats), imgs = {};
+    for (const it of S.items) {
+      const p = S.pages[it.page], page = doc.getPage(it.page), R = (p.v1.rotation || 0);
+      const toPdf = (x, y) => p.v1.convertToPdfPoint(x, y);
+      if (it.type === 'img') {
+        imgs[it.url] = imgs[it.url] || await doc.embedPng(it.url);
+        const [bx, by] = toPdf(it.x, it.y + it.h);
+        page.drawImage(imgs[it.url], { x: bx, y: by, width: it.w, height: it.h, rotate: degrees(R) });
+      } else {
+        const [bx, by] = toPdf(it.x, it.y + it.size * .85);
+        if (it.text === '✓') page.drawText('4', { x: bx, y: by, size: it.size, font: sym, color: rgb(0, 0, 0), rotate: degrees(R) });
+        else Hub.winAnsi(it.text).split('\n').forEach((l, i) => {
+          const th = R * Math.PI / 180, lh = it.size * 1.2;
+          page.drawText(l, { x: bx + Math.sin(th) * lh * i, y: by - Math.cos(th) * lh * i, size: it.size, font, color: rgb(.07, .07, .07), rotate: degrees(R) });
+        });
+      }
+    }
+    Hub.download(await doc.save(), Hub.baseName(S.name) + '-signed.pdf', 'application/pdf'); Hub.toast('Signed PDF downloaded.');
+  } catch (e) { console.error(e); Hub.toast('Could not build the PDF: ' + e.message); }
+  $('save').disabled = false; $('save').textContent = 'Download signed PDF';
+};
+renderTypedOpts(); makeTyped();
+let rz; new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(() => { if (S.pdf && !drag) renderPages(); }, 250); }).observe($('stage'));
+</script>
+</body>
+</html>

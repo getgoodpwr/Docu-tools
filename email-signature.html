@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Email Signature Builder · GoodPWR HR Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=Jost:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="../assets/hub.css">
+<style>
+.mail{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.mail .bar{background:var(--soft);padding:10px 14px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line)}
+.mail .content{padding:20px 22px;overflow-x:auto}
+.mail .content p.greet{font-family:Arial,sans-serif;font-size:14px;color:#333;margin:0 0 18px}
+.how{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:640px){.how{grid-template-columns:1fr}}
+.how ol{margin:6px 0 0;padding-left:20px;font-size:14px}
+.how li{margin-bottom:4px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head"><h1>Email Signature Builder</h1><span class="replaces">Instead of WiseStamp or Exclaimer</span>
+    <p>Everyone gets the same polished GoodPWR signature. Fill in your details, copy, and paste it into Gmail or Outlook.</p></div>
+  <div class="cols wide-left">
+    <aside>
+      <div class="panel stack">
+        <h2>Your details</h2>
+        <div class="grid2">
+          <div class="field"><label for="name">Full name</label><input type="text" id="name" value="Jordan Rivera"></div>
+          <div class="field"><label for="title">Job title</label><input type="text" id="title" value="HR Coordinator"></div>
+          <div class="field"><label for="dept">Department</label><input type="text" id="dept" value="People Operations"></div>
+          <div class="field"><label for="pron">Pronouns (optional)</label><input type="text" id="pron" value=""></div>
+          <div class="field"><label for="phone">Office phone</label><input type="tel" id="phone" value="(555) 010-2030"></div>
+          <div class="field"><label for="mobile">Mobile (optional)</label><input type="tel" id="mobile" value=""></div>
+        </div>
+        <div class="field"><label for="email">Email</label><input type="email" id="email" value="jordan.rivera@getgoodpwr.com"></div>
+      </div>
+      <div class="panel stack">
+        <h2>Company</h2>
+        <div class="field"><label for="site">Website</label><input type="text" id="site" value="getgoodpwr.com"></div>
+        <div class="field"><label for="addr">Address (optional)</label><input type="text" id="addr" value=""></div>
+        <div class="field"><label for="linkedin">LinkedIn URL (optional)</label><input type="url" id="linkedin" value=""></div>
+        <div class="field"><label for="logo">Logo image URL</label><input type="url" id="logo"><span class="small muted">Must be a web link. Pasted pictures get removed by Gmail. The hub's own logo link is filled in for you.</span></div>
+        <div class="field"><label for="photo">Headshot URL (optional)</label><input type="url" id="photo" value=""></div>
+        <div class="field"><label for="note">Footer note (optional)</label><textarea id="note" style="min-height:56px">This email and any attachments are confidential and intended only for the recipient.</textarea></div>
+      </div>
+      <div class="panel stack">
+        <h2>Style</h2>
+        <div class="seg" id="layout"><button data-l="classic" aria-pressed="true">Classic</button><button data-l="stacked" aria-pressed="false">Stacked</button><button data-l="compact" aria-pressed="false">Compact</button></div>
+        <div class="field"><label for="accent">Accent color</label><input type="color" id="accent" value="#2E7D4F"></div>
+      </div>
+    </aside>
+    <section class="stack">
+      <div class="mail"><div class="bar">New message · preview</div><div class="content"><p class="greet">Hi team,<br><br>Thanks!</p><div id="sig"></div></div></div>
+      <div class="row"><button class="btn primary" id="copy">Copy signature</button><button class="btn" id="copyHtml">Copy HTML code</button><button class="btn" id="dl">Download .html</button></div>
+      <div class="panel how">
+        <div><b>Gmail</b><ol><li>Click <b>Copy signature</b> above.</li><li>In Gmail, open Settings ⚙ › <b>See all settings</b>.</li><li>Under <b>Signature</b>, click <b>Create new</b>, then paste.</li><li>Scroll down and click <b>Save Changes</b>.</li></ol></div>
+        <div><b>Outlook</b><ol><li>Click <b>Copy signature</b> above.</li><li>In Outlook, open Settings › <b>Mail</b> › <b>Compose and reply</b> (or <b>Signatures</b>).</li><li>Create a new signature and paste into the box.</li><li>Choose it as your default for new messages, then save.</li></ol></div>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="../assets/hub.js"></script>
+<script>
+Hub.mount('Email Signature Builder');
+const $ = id => document.getElementById(id);
+$('logo').value = new URL('../assets/logo.png', location.href).href;
+let layout = 'classic';
+const v = id => $(id).value.trim(), e = Hub.esc;
+const url = s => !s ? '' : /^https?:\/\//i.test(s) ? s : 'https://' + s;
+function build() {
+  const acc = $('accent').value, F = 'font-family:Arial,Helvetica,sans-serif;';
+  const nameLine = `<span style="${F}font-size:16px;font-weight:bold;color:#1f2124;">${e(v('name'))}</span>${v('pron') ? `<span style="${F}font-size:12px;color:#888;"> (${e(v('pron'))})</span>` : ''}`;
+  const role = [v('title'), v('dept')].filter(Boolean).map(e).join(' &middot; ');
+  const contacts = [
+    v('phone') && `<span style="color:${acc};font-weight:bold;">P</span>&nbsp;<a href="tel:${e(v('phone').replace(/[^\d+]/g, ''))}" style="color:#444;text-decoration:none;">${e(v('phone'))}</a>`,
+    v('mobile') && `<span style="color:${acc};font-weight:bold;">M</span>&nbsp;<a href="tel:${e(v('mobile').replace(/[^\d+]/g, ''))}" style="color:#444;text-decoration:none;">${e(v('mobile'))}</a>`,
+    v('email') && `<span style="color:${acc};font-weight:bold;">E</span>&nbsp;<a href="mailto:${e(v('email'))}" style="color:#444;text-decoration:none;">${e(v('email'))}</a>`,
+    v('site') && `<span style="color:${acc};font-weight:bold;">W</span>&nbsp;<a href="${e(url(v('site')))}" style="color:#444;text-decoration:none;">${e(v('site').replace(/^https?:\/\//, ''))}</a>`
+  ].filter(Boolean);
+  const extra = [v('addr') && e(v('addr')), v('linkedin') && `<a href="${e(url(v('linkedin')))}" style="color:${acc};text-decoration:none;font-weight:bold;">LinkedIn</a>`].filter(Boolean).join(' &nbsp;|&nbsp; ');
+  const logo = v('logo') ? `<img src="${e(v('logo'))}" alt="GoodPWR" height="48" style="display:block;height:48px;width:auto;border:0;">` : `<span style="font-family:Georgia,serif;font-size:22px;font-weight:bold;color:#1f2124;">GoodPWR</span>`;
+  const photo = v('photo') ? `<img src="${e(v('photo'))}" alt="" width="72" height="72" style="display:block;width:72px;height:72px;border-radius:36px;border:0;">` : '';
+  const note = v('note') ? `<tr><td colspan="3" style="padding-top:12px;${F}font-size:10px;line-height:14px;color:#999;max-width:480px;">${e(v('note'))}</td></tr>` : '';
+  if (layout === 'compact') {
+    return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;${F}"><tr><td style="${F}font-size:13px;line-height:19px;color:#444;">${nameLine}<span style="color:#ccc;"> &nbsp;|&nbsp; </span>${role}<br>${contacts.join(' &nbsp; ')}${extra ? '<br>' + extra : ''}</td></tr>${note}</table>`;
+  }
+  if (layout === 'stacked') {
+    return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;${F}"><tr><td style="padding-bottom:10px;">${photo || logo}</td></tr><tr><td style="${F}font-size:13px;line-height:19px;color:#444;">${nameLine}<br><span style="color:${acc};font-weight:bold;">${role}</span></td></tr><tr><td style="padding:8px 0;"><div style="width:48px;height:3px;background:${acc};line-height:3px;font-size:0;">&nbsp;</div></td></tr><tr><td style="${F}font-size:12.5px;line-height:19px;color:#444;">${contacts.join('<br>')}${extra ? '<br>' + extra : ''}</td></tr>${photo ? `<tr><td style="padding-top:10px;">${logo}</td></tr>` : ''}${note}</table>`;
+  }
+  return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;${F}"><tr>
+<td valign="top" style="padding-right:16px;">${photo ? photo + '<div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>' : ''}${logo}</td>
+<td valign="top" style="border-left:3px solid ${acc};padding-left:16px;${F}font-size:13px;line-height:19px;color:#444;">${nameLine}<br><span style="color:${acc};font-weight:bold;">${role}</span><br><div style="height:6px;line-height:6px;font-size:0;">&nbsp;</div>${contacts.join('<br>')}${extra ? '<br>' + extra : ''}</td>
+</tr>${note}</table>`;
+}
+function render() { $('sig').innerHTML = build(); }
+document.querySelectorAll('aside input, aside textarea').forEach(el => el.addEventListener('input', render));
+$('layout').onclick = ev => { const b = ev.target.closest('button'); if (!b) return; layout = b.dataset.l; $('layout').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); render(); };
+$('copy').onclick = async () => {
+  const html = build();
+  try { await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([$('sig').innerText], { type: 'text/plain' }) })]); Hub.toast('Signature copied. Paste it into Gmail or Outlook.'); }
+  catch (err) {
+    const r = document.createRange(); r.selectNodeContents($('sig')); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    try { document.execCommand('copy'); Hub.toast('Signature copied. Paste it into Gmail or Outlook.'); } catch (e2) { Hub.toast('Signature selected. Press Ctrl+C to copy.'); }
+  }
+};
+$('copyHtml').onclick = async () => { try { await navigator.clipboard.writeText(build()); Hub.toast('HTML code copied.'); } catch (e2) { Hub.toast('Could not copy. Use Download .html instead.'); } };
+$('dl').onclick = () => Hub.download(`<!doctype html><meta charset="utf-8"><title>Signature</title>${build()}`, `signature-${v('name').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.html`, 'text/html');
+render();
+</script>
+</body>
+</html>

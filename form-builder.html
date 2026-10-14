@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fillable Form Builder · GoodPWR HR Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=Jost:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="../assets/hub.css">
+<style>
+.ftypes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ftypes button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:8px 10px;text-align:left;display:flex;gap:8px;align-items:center}
+.ftypes button i{width:18px;height:14px;border:1.5px solid currentColor;border-radius:2px;flex:none;font-style:normal;font-size:10px;line-height:11px;text-align:center}
+.ftypes button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.sheet.drawing{cursor:crosshair;touch-action:none}
+.fld{position:absolute;border:1.5px solid #3b6fd8;background:rgba(59,111,216,.10);border-radius:2px;cursor:move;touch-action:none;font-size:11px;color:#2a4fa0;overflow:hidden;font-family:var(--f-mono)}
+.fld span{position:absolute;left:3px;top:1px;white-space:nowrap;pointer-events:none}
+.fld.sig{border-color:#b07a00;background:rgba(245,196,0,.16);color:#7a5400}
+.fld.check{border-color:#2E7D4F;background:rgba(46,125,79,.12);color:#2E7D4F}
+.fld.sel{box-shadow:0 0 0 2px var(--accent)}
+.fld .h{position:absolute;right:0;bottom:0;width:10px;height:10px;background:var(--accent);cursor:nwse-resize;display:none}
+.fld.sel .h{display:block}
+.flist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:220px;overflow:auto}
+.flist li{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:5px;padding:5px 8px;font-size:13px;cursor:pointer}
+.flist li.sel{border-color:var(--accent);background:var(--accent-soft)}
+.flist li .mono{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.pg-label{font-size:12px;color:var(--muted);font-family:var(--f-mono);margin-bottom:-12px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head"><h1>Fillable Form Builder</h1><span class="replaces">Instead of Acrobat Pro or Jotform PDF Editor</span>
+    <p>Turn any PDF into a form people can fill in on their computer or phone. Draw the fields where they belong, name them, and download the fillable PDF.</p></div>
+  <div class="cols">
+    <aside>
+      <div class="panel stack">
+        <h2>1 · Document</h2>
+        <div class="drop" id="drop"><strong>Choose a PDF</strong><span class="muted">or drop it here</span></div>
+        <div class="row between small" id="docInfo" hidden><span class="mono" id="docName"></span><button class="btn sm" id="swap">Change file</button></div>
+      </div>
+      <div class="panel stack">
+        <h2>2 · Draw fields</h2>
+        <div class="ftypes" id="ftypes">
+          <button data-t="text" aria-pressed="true"><i>T</i>Text</button>
+          <button data-t="multi" aria-pressed="false"><i>¶</i>Paragraph</button>
+          <button data-t="check" aria-pressed="false"><i>✓</i>Checkbox</button>
+          <button data-t="drop" aria-pressed="false"><i>▾</i>Dropdown</button>
+          <button data-t="date" aria-pressed="false"><i>#</i>Date</button>
+          <button data-t="sig" aria-pressed="false"><i>✎</i>Signature</button>
+        </div>
+        <p class="small muted" style="margin:0">Drag on the page to draw the selected field. Click a field to edit it.</p>
+        <ul class="flist" id="flist"></ul>
+      </div>
+      <div class="panel stack" id="props" hidden>
+        <h2>Selected field</h2>
+        <div class="field"><label for="pName">Field name</label><input type="text" id="pName"></div>
+        <div class="grid2">
+          <div class="field" id="wrapSize"><label for="pSize">Font size</label><input type="number" id="pSize" min="0" max="36" step="1"><span class="small muted">0 = auto</span></div>
+          <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" id="pReq"> Required</label></div>
+        </div>
+        <div class="field" id="wrapOpts"><label for="pOpts">Dropdown options (one per line)</label><textarea id="pOpts"></textarea></div>
+        <div class="field" id="wrapDef"><label for="pDef">Default value</label><input type="text" id="pDef"></div>
+        <div class="row"><button class="btn sm" id="dup">Duplicate</button><button class="btn sm danger" id="del">Delete</button></div>
+      </div>
+      <div class="panel stack">
+        <label class="check"><input type="checkbox" id="keepOld" checked> Keep fields already in the PDF</label>
+        <button class="btn primary" id="save" disabled>Download fillable PDF</button>
+      </div>
+    </aside>
+    <section class="stage" id="stage"><p class="empty-note">Choose a PDF to start. You can also <a href="#" id="sample">try a sample form</a>.</p></section>
+  </div>
+</main>
+<script src="../assets/hub.js"></script>
+<script>
+Hub.mount('Fillable Form Builder');
+const $ = id => document.getElementById(id);
+const S = { bytes: null, name: '', pdf: null, pages: [], fields: [], sel: null, type: 'text' };
+const LABEL = { text: 'Text', multi: 'Paragraph', check: 'Checkbox', drop: 'Dropdown', date: 'Date', sig: 'Signature' };
+const DEF = { text: [180, 20], multi: [300, 70], check: [14, 14], drop: [150, 20], date: [100, 20], sig: [200, 36] };
+let uid = 1;
+
+async function openDoc(bytes, name) {
+  try {
+    S.pdf = await Hub.openPdf(bytes); S.bytes = bytes; S.name = name; S.fields = []; S.sel = null;
+    $('drop').hidden = true; $('docInfo').hidden = false; $('docName').textContent = `${name} · ${S.pdf.numPages} page${S.pdf.numPages > 1 ? 's' : ''}`;
+    $('save').disabled = false; await renderPages(); refresh();
+  } catch (e) { Hub.toast(e.message); }
+}
+async function renderPages() {
+  const st = $('stage'); st.innerHTML = ''; S.pages = [];
+  const avail = Math.max(260, st.clientWidth - 40);
+  for (let i = 1; i <= S.pdf.numPages; i++) {
+    const pg = await S.pdf.getPage(i), v1 = pg.getViewport({ scale: 1 }), scale = Math.min(avail / v1.width, 1.5);
+    const lab = document.createElement('div'); lab.className = 'pg-label'; lab.textContent = `Page ${i}`; st.appendChild(lab);
+    const sh = document.createElement('div'); sh.className = 'sheet drawing';
+    const { canvas, viewport } = await Hub.renderPage(pg, scale);
+    sh.style.width = viewport.width + 'px'; sh.style.height = viewport.height + 'px'; sh.appendChild(canvas); st.appendChild(sh);
+    S.pages.push({ el: sh, v1, scale });
+    sh.addEventListener('pointerdown', e => sheetDown(e, i - 1));
+  }
+  drawFields();
+}
+const drop = Hub.dropzone($('drop'), { accept: 'application/pdf,.pdf', onFiles: async ([f]) => openDoc(await Hub.bytes(f), f.name) });
+$('swap').onclick = () => drop.click();
+$('sample').onclick = async e => { e.preventDefault(); openDoc(await Hub.samplePdf(['Full name', '', 'Department', '', 'Start date', '', 'I have read the employee handbook', '', 'Signature'], 'New Hire Information'), 'sample-new-hire.pdf'); };
+
+$('ftypes').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.type = b.dataset.t; $('ftypes').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); };
+
+function uniqueName(base) { let n = 1, nm; do { nm = `${base}_${n++}`; } while (S.fields.some(f => f.name === nm)); return nm; }
+let act = null;
+function sheetDown(e, pi) {
+  if (e.button > 0) return;
+  const p = S.pages[pi], r = p.el.getBoundingClientRect(), x = (e.clientX - r.left) / p.scale, y = (e.clientY - r.top) / p.scale;
+  const hit = e.target.closest('.fld');
+  if (hit) {
+    const f = S.fields.find(q => q.id === +hit.dataset.id); select(f.id);
+    act = { mode: e.target.classList.contains('h') ? 'resize' : 'move', f, sx: x, sy: y, o: { ...f }, p }; p.el.setPointerCapture(e.pointerId); return;
+  }
+  e.preventDefault();
+  const t = S.type, f = { id: uid++, type: t, page: pi, x, y, w: 1, h: 1, name: uniqueName(LABEL[t].toLowerCase()), size: 0, req: false, opts: t === 'drop' ? ['Option 1', 'Option 2', 'Option 3'] : [], def: '' };
+  S.fields.push(f); act = { mode: 'draw', f, sx: x, sy: y, p }; p.el.setPointerCapture(e.pointerId); drawFields();
+}
+document.addEventListener('pointermove', e => {
+  if (!act) return; const { p, f } = act, r = p.el.getBoundingClientRect(), x = (e.clientX - r.left) / p.scale, y = (e.clientY - r.top) / p.scale;
+  if (act.mode === 'draw') { f.x = Math.min(act.sx, x); f.y = Math.min(act.sy, y); f.w = Math.abs(x - act.sx); f.h = Math.abs(y - act.sy); if (f.type === 'check') f.h = f.w; }
+  else if (act.mode === 'move') { f.x = act.o.x + x - act.sx; f.y = act.o.y + y - act.sy; }
+  else { f.w = Math.max(8, act.o.w + x - act.sx); f.h = f.type === 'check' ? f.w : Math.max(8, act.o.h + y - act.sy); }
+  placeEl(f);
+});
+document.addEventListener('pointerup', () => {
+  if (!act) return; const { f, mode } = act; act = null;
+  if (mode === 'draw') { if (f.w < 6 || f.h < 6) { const [w, h] = DEF[f.type]; f.w = w; f.h = h; f.x -= 0; } select(f.id); }
+  drawFields(); refresh();
+});
+function placeEl(f) {
+  const el = document.querySelector(`.fld[data-id="${f.id}"]`), sc = S.pages[f.page].scale; if (!el) return;
+  Object.assign(el.style, { left: f.x * sc + 'px', top: f.y * sc + 'px', width: f.w * sc + 'px', height: f.h * sc + 'px' });
+}
+function drawFields() {
+  document.querySelectorAll('.fld').forEach(n => n.remove());
+  S.fields.forEach(f => {
+    const el = document.createElement('div'); el.className = `fld ${f.type}` + (f.id === S.sel ? ' sel' : ''); el.dataset.id = f.id;
+    el.innerHTML = `<span>${f.type === 'check' ? '' : Hub.esc(f.name)}${f.req ? ' *' : ''}</span><i class="h"></i>`;
+    S.pages[f.page].el.appendChild(el); placeEl(f);
+  });
+}
+function select(id) { S.sel = id; drawFields(); refresh(); }
+function refresh() {
+  $('flist').innerHTML = S.fields.map(f => `<li data-id="${f.id}" class="${f.id === S.sel ? 'sel' : ''}"><span class="mono">${Hub.esc(f.name)}</span><span class="small muted">${LABEL[f.type]} · p${f.page + 1}</span></li>`).join('') || '<li class="small muted" style="cursor:default">No fields yet</li>';
+  const f = S.fields.find(q => q.id === S.sel); $('props').hidden = !f; if (!f) return;
+  $('pName').value = f.name; $('pSize').value = f.size; $('pReq').checked = f.req; $('pOpts').value = f.opts.join('\n'); $('pDef').value = f.def;
+  $('wrapOpts').hidden = f.type !== 'drop'; $('wrapDef').hidden = f.type === 'check' || f.type === 'sig'; $('wrapSize').hidden = f.type === 'check';
+}
+$('flist').onclick = e => { const li = e.target.closest('li[data-id]'); if (li) { select(+li.dataset.id); document.querySelector(`.fld[data-id="${li.dataset.id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }); } };
+const cur = () => S.fields.find(q => q.id === S.sel);
+$('pName').onchange = e => { const f = cur(), v = e.target.value.trim().replace(/[.\s]+/g, '_'); if (!v) return; if (S.fields.some(q => q !== f && q.name === v)) { Hub.toast('Another field already uses that name.'); e.target.value = f.name; return; } f.name = v; drawFields(); refresh(); };
+$('pSize').onchange = e => { cur().size = Math.max(0, +e.target.value || 0); };
+$('pReq').onchange = e => { cur().req = e.target.checked; drawFields(); };
+$('pOpts').onchange = e => { cur().opts = e.target.value.split('\n').map(s => s.trim()).filter(Boolean); };
+$('pDef').onchange = e => { cur().def = e.target.value; };
+$('del').onclick = () => { S.fields = S.fields.filter(q => q.id !== S.sel); S.sel = null; drawFields(); refresh(); };
+$('dup').onclick = () => { const f = cur(), n = { ...f, id: uid++, y: f.y + f.h + 8, name: uniqueName(f.name.replace(/_\d+$/, '')), opts: [...f.opts] }; S.fields.push(n); select(n.id); };
+document.addEventListener('keydown', e => { if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; if ((e.key === 'Delete' || e.key === 'Backspace') && S.sel) $('del').click(); });
+
+$('save').onclick = async () => {
+  if (!S.fields.length) { Hub.toast('Draw at least one field first.'); return; }
+  const bad = S.fields.find(f => f.type === 'drop' && !f.opts.length); if (bad) { select(bad.id); Hub.toast('Give the dropdown at least one option.'); return; }
+  $('save').disabled = true; $('save').textContent = 'Building…';
+  try {
+    await Hub.load('pdflib');
+    const { PDFDocument, StandardFonts, rgb } = PDFLib;
+    const doc = await PDFDocument.load(S.bytes, { ignoreEncryption: true }), form = doc.getForm();
+    if (!$('keepOld').checked) form.getFields().forEach(f => { try { form.removeField(f); } catch (e) {} });
+    const helv = await doc.embedFont(StandardFonts.Helvetica);
+    const existing = new Set(form.getFields().map(f => f.getName()));
+    for (const f of S.fields) {
+      let name = f.name; while (existing.has(name)) name += '_x'; existing.add(name);
+      const p = S.pages[f.page], a = p.v1.convertToPdfPoint(f.x, f.y), b = p.v1.convertToPdfPoint(f.x + f.w, f.y + f.h);
+      const box = { x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), width: Math.abs(a[0] - b[0]), height: Math.abs(a[1] - b[1]), font: helv,
+        borderColor: rgb(.55, .58, .62), borderWidth: 1, backgroundColor: f.type === 'sig' ? rgb(1, .98, .88) : rgb(.94, .96, 1) };
+      const page = doc.getPage(f.page);
+      if (f.type === 'check') { const c = form.createCheckBox(name); c.addToPage(page, { ...box, backgroundColor: rgb(1, 1, 1) }); if (f.req) c.enableRequired(); }
+      else if (f.type === 'drop') { const d = form.createDropdown(name); d.addOptions(f.opts.map(Hub.winAnsi)); if (f.def && f.opts.includes(f.def)) d.select(Hub.winAnsi(f.def)); d.addToPage(page, box); if (f.size) d.setFontSize(f.size); if (f.req) d.enableRequired(); }
+      else {
+        const t = form.createTextField(name);
+        if (f.type === 'multi') t.enableMultiline();
+        if (f.def) t.setText(Hub.winAnsi(f.def));
+        t.addToPage(page, box); if (f.size) t.setFontSize(f.size);
+        if (f.req) t.enableRequired();
+      }
+    }
+    form.updateFieldAppearances(helv);
+    Hub.download(await doc.save(), Hub.baseName(S.name) + '-fillable.pdf', 'application/pdf'); Hub.toast('Fillable PDF downloaded.');
+  } catch (e) { console.error(e); Hub.toast('Could not build the form: ' + e.message); }
+  $('save').disabled = false; $('save').textContent = 'Download fillable PDF';
+};
+let rz; new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(() => { if (S.pdf && !act) renderPages(); }, 250); }).observe($('stage'));
+</script>
+</body>
+</html>

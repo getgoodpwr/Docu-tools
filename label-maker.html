@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>QR &amp; Barcode Labels · GoodPWR HR Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=Jost:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="../assets/hub.css">
+<style>#pv canvas{max-width:100%;height:auto!important}</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head"><h1>QR &amp; Barcode Labels</h1><span class="replaces">Instead of Avery Design Pro or label software</span>
+    <p>Asset tags, equipment labels and badge stickers with QR codes or barcodes, laid out to print exactly on standard Avery sheets.</p></div>
+  <div class="cols wide-left">
+    <aside>
+      <div class="panel stack">
+        <h2>1 · Label sheet</h2>
+        <div class="field"><label for="sheet">Avery template</label>
+          <select id="sheet">
+            <option value="5160">5160 / 8160 · Address, 1" × 2⅝" (30 per sheet)</option>
+            <option value="5163">5163 / 8163 · Shipping, 2" × 4" (10 per sheet)</option>
+            <option value="5167">5167 / 8167 · Return address, ½" × 1¾" (80 per sheet)</option>
+            <option value="5195">5195 · Return address, ⅔" × 1¾" (60 per sheet)</option>
+            <option value="22806" selected>22806 · Square, 2" × 2" (12 per sheet)</option>
+          </select></div>
+        <div class="grid2">
+          <div class="field"><label for="skip">Start at label #</label><input type="number" id="skip" value="1" min="1"></div>
+          <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" id="outline"> Print outlines</label></div>
+        </div>
+      </div>
+      <div class="panel stack">
+        <h2>2 · Codes</h2>
+        <div class="seg" id="src"><button data-s="seq" aria-pressed="true">Number sequence</button><button data-s="list" aria-pressed="false">My own list</button></div>
+        <div id="seqOpts" class="grid2">
+          <div class="field"><label for="prefix">Prefix</label><input type="text" id="prefix" value="GPWR-EQ-"></div>
+          <div class="field"><label for="start">First number</label><input type="number" id="start" value="1" min="0"></div>
+          <div class="field"><label for="count">How many</label><input type="number" id="count" value="12" min="1" max="2000"></div>
+          <div class="field"><label for="digits">Digits</label><input type="number" id="digits" value="4" min="1" max="10"></div>
+        </div>
+        <div id="listOpts" class="stack" hidden>
+          <div class="field"><label for="list">One per line: code, optional line 2</label><textarea id="list" placeholder="LAPTOP-0012, Dell Latitude 5440&#10;TRUCK-07, Ford F-150&#10;DRILL-031, Milwaukee M18"></textarea></div>
+          <div class="drop" id="dropCsv" style="padding:12px"><strong style="font-size:14px">…or load a CSV / Excel</strong><span class="muted">First column = code, second = line 2</span></div>
+        </div>
+        <div class="field"><label for="type">Code type</label><select id="type"><option value="qr">QR code</option><option value="CODE128">Barcode (Code 128)</option><option value="CODE39">Barcode (Code 39)</option><option value="none">Text only</option></select></div>
+        <div class="field"><label for="qrUrl">QR links to (optional)</label><input type="text" id="qrUrl" placeholder="https://… use {code} for the label's code"></div>
+      </div>
+      <div class="panel stack">
+        <h2>3 · Text on the label</h2>
+        <div class="field"><label for="line1">Top line</label><input type="text" id="line1" value="Property of GoodPWR"></div>
+        <label class="check"><input type="checkbox" id="showCode" checked> Print the code under the QR / barcode</label>
+        <div class="field"><label for="line3">Bottom line (same on every label)</label><input type="text" id="line3" value="If found, call (555) 010-2030"></div>
+      </div>
+    </aside>
+    <section class="stack">
+      <div class="row between"><span class="small muted" id="info"></span><button class="btn primary" id="dl">Download PDF to print</button></div>
+      <div class="stage" id="pv"><p class="empty-note">Building preview…</p></div>
+      <div class="note">Print at <b>100% / Actual size</b> (not "Fit to page"). Test on plain paper first and hold it behind a label sheet to check alignment.</div>
+    </section>
+  </div>
+</main>
+<script src="../assets/hub.js"></script>
+<script>
+Hub.mount('QR & Barcode Labels');
+const $ = id => document.getElementById(id);
+// inches: label w, h, cols, rows, top, left, horizontal pitch, vertical pitch
+const SHEETS = {
+  5160: [2.625, 1, 3, 10, .5, .1875, 2.75, 1],
+  5163: [4, 2, 2, 5, .5, .15625, 4.1875, 2],
+  5167: [1.75, .5, 4, 20, .5, .28125, 2.0625, .5],
+  5195: [1.75, .6667, 4, 15, .5, .28125, 2.0625, .6667],
+  22806: [2, 2, 3, 4, .625, .625, 2.625, 2.5]
+};
+let src = 'seq', last = null, timer;
+$('src').onclick = e => { const b = e.target.closest('button'); if (!b) return; src = b.dataset.s; $('src').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); $('seqOpts').hidden = src !== 'seq'; $('listOpts').hidden = src !== 'list'; schedule(); };
+Hub.dropzone($('dropCsv'), { accept: '.csv,.txt,.xlsx,.xls', onFiles: async ([f]) => {
+  try { const t = await Hub.readTable(f); $('list').value = t.rows.map(r => [r[t.headers[0]], t.headers[1] ? r[t.headers[1]] : ''].filter(Boolean).join(', ')).join('\n'); schedule(); }
+  catch (e) { Hub.toast('That file could not be read.'); }
+} });
+function records() {
+  if (src === 'seq') { const n = Math.min(2000, +$('count').value || 0), s = +$('start').value || 0, dg = +$('digits').value || 1; return [...Array(n)].map((_, i) => ({ code: $('prefix').value + String(s + i).padStart(dg, '0'), sub: '' })); }
+  return $('list').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const i = l.indexOf(','); return i < 0 ? { code: l, sub: '' } : { code: l.slice(0, i).trim(), sub: l.slice(i + 1).trim() }; });
+}
+function barcodePng(code, fmt) {
+  const c = document.createElement('canvas');
+  try { JsBarcode(c, code, { format: fmt, displayValue: false, margin: 0, height: 120, width: 4 }); return c.toDataURL('image/png'); } catch (e) { return null; }
+}
+async function build() {
+  await Hub.load('pdflib', 'qrcode', 'jsbarcode');
+  const { PDFDocument, StandardFonts, rgb } = PDFLib, [lw, lh, cols, rows, top, left, hp, vp] = SHEETS[$('sheet').value].map(n => n * 72);
+  const doc = await PDFDocument.create(), font = await doc.embedFont(StandardFonts.Helvetica), bold = await doc.embedFont(StandardFonts.HelveticaBold), mono = await doc.embedFont(StandardFonts.Courier);
+  const recs = records(), per = cols * rows, skip = Math.max(0, Math.min(per - 1, (+$('skip').value || 1) - 1)), type = $('type').value, ink = rgb(0, 0, 0);
+  let page, bad = 0;
+  const fitText = (t, f, max, w) => { let s = max; while (s > 4 && f.widthOfTextAtSize(t, s) > w) s -= .5; return s; };
+  for (let i = 0; i < recs.length; i++) {
+    const slot = i + skip, pi = Math.floor(slot / per), k = slot % per;
+    if (k === 0 || !page) page = doc.addPage([612, 792]);
+    const c = k % cols, r = Math.floor(k / cols), x = left + c * hp, y = 792 - top - r * vp - lh;
+    if ($('outline').checked) page.drawRectangle({ x, y, width: lw, height: lh, borderColor: rgb(.75, .75, .75), borderWidth: .5 });
+    const { code, sub } = recs[i], pad = Math.min(6, lh * .08), wide = lw / lh > 1.6;
+    const l1 = Hub.winAnsi($('line1').value), l3 = Hub.winAnsi($('line3').value), codeTxt = Hub.winAnsi(code), subTxt = Hub.winAnsi(sub);
+    let tx = x + pad, tw = lw - pad * 2;
+    // code graphic
+    if (type !== 'none') {
+      if (type === 'qr') {
+        const q = qrcode(0, 'M'); q.addData(($('qrUrl').value || '{code}').replace(/\{code\}/g, code)); q.make();
+        const n = q.getModuleCount(), size = wide ? lh - pad * 2 : Math.min(lw, lh) * .58, m = size / n;
+        const qx = wide ? x + pad : x + (lw - size) / 2, qy = wide ? y + pad : y + lh - pad - size - (l1 ? lh * .1 : 0);
+        for (let rr = 0; rr < n; rr++) for (let cc = 0; cc < n; cc++) if (q.isDark(rr, cc)) page.drawRectangle({ x: qx + cc * m, y: qy + (n - 1 - rr) * m, width: m + .05, height: m + .05, color: ink });
+        if (wide) { tx = qx + size + pad; tw = x + lw - pad - tx; }
+      } else {
+        const png = barcodePng(code, type);
+        if (!png) bad++;
+        else {
+          const img = await doc.embedPng(png), bw = wide ? lw * .55 : lw - pad * 2, bh = wide ? lh - pad * 2 - (($('showCode').checked) ? 9 : 0) : lh * .4;
+          const bx = x + pad, by = wide ? y + lh - pad - bh : y + lh * .3;
+          page.drawImage(img, { x: bx, y: by, width: bw, height: bh });
+          if ($('showCode').checked) { const s = fitText(codeTxt, mono, 8, bw); page.drawText(codeTxt, { x: bx + (bw - mono.widthOfTextAtSize(codeTxt, s)) / 2, y: by - s - 1, size: s, font: mono, color: ink }); }
+          if (wide) { tx = bx + bw + pad; tw = x + lw - pad - tx; }
+        }
+      }
+    }
+    // text block
+    const lines = [];
+    if (l1) lines.push([l1, bold, 9]);
+    if ((type === 'none' || type === 'qr') && $('showCode').checked || type === 'none') lines.push([codeTxt, mono, type === 'none' ? 12 : 9]);
+    if (subTxt) lines.push([subTxt, font, 8]);
+    if (l3) lines.push([l3, font, 6.5]);
+    const centered = !wide;
+    if (wide || type === 'none') {
+      const sizes = lines.map(([t, f, s]) => fitText(t, f, Math.min(s, lh / (lines.length + 1)), tw)), total = sizes.reduce((a, s) => a + s * 1.25, 0);
+      let cy = y + lh / 2 + total / 2;
+      lines.forEach(([t, f], j) => { cy -= sizes[j] * 1.25; const w = f.widthOfTextAtSize(t, sizes[j]); page.drawText(t, { x: centered ? x + (lw - w) / 2 : tx, y: cy + sizes[j] * .2, size: sizes[j], font: f, color: ink }); });
+    } else {
+      // square / tall: top line above the code, the rest below it
+      const below = lines.filter(l => l[0] !== l1);
+      if (l1) { const s = fitText(l1, bold, 9, tw); page.drawText(l1, { x: x + (lw - bold.widthOfTextAtSize(l1, s)) / 2, y: y + lh - pad - s, size: s, font: bold, color: ink }); }
+      let cy = type === 'qr' ? y + lh - pad - Math.min(lw, lh) * .58 - (l1 ? lh * .1 : 0) - 2 : y + lh * .3 - 12;
+      below.forEach(([t, f, s0]) => { const s = fitText(t, f, s0, tw); cy -= s * 1.2; page.drawText(t, { x: x + (lw - f.widthOfTextAtSize(t, s)) / 2, y: cy, size: s, font: f, color: ink }); });
+    }
+  }
+  if (bad) Hub.toast(`${bad} code${bad > 1 ? 's' : ''} can't be made into this barcode type. Code 39 allows only A–Z, 0–9 and - . $ / + % space.`, 6000);
+  $('info').textContent = `${recs.length} label${recs.length === 1 ? '' : 's'} · ${doc.getPageCount()} sheet${doc.getPageCount() === 1 ? '' : 's'}`;
+  return recs.length ? doc.save() : null;
+}
+async function preview() {
+  try {
+    last = await build(); const pv = $('pv');
+    if (!last) { pv.innerHTML = '<p class="empty-note">Add at least one code.</p>'; return; }
+    const pdf = await Hub.openPdf(last), pg = await pdf.getPage(1), scale = Math.min((pv.clientWidth - 40) / 612, 1.3);
+    const sh = document.createElement('div'); sh.className = 'sheet'; const { canvas } = await Hub.renderPage(pg, scale); sh.appendChild(canvas);
+    pv.innerHTML = ''; pv.appendChild(sh);
+  } catch (e) { console.error(e); $('pv').innerHTML = `<p class="empty-note">Could not build the labels: ${Hub.esc(e.message)}</p>`; }
+}
+function schedule() { clearTimeout(timer); timer = setTimeout(preview, 350); }
+document.querySelectorAll('aside input, aside select, aside textarea').forEach(el => el.addEventListener('input', schedule));
+$('dl').onclick = async () => { const b = await build(); if (b) Hub.download(b, `labels-avery-${$('sheet').value}.pdf`, 'application/pdf'); };
+preview();
+</script>
+</body>
+</html>
