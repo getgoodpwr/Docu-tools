@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GoodPWR HR Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,600;6..96,700&family=Jost:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/hub.css">
+<style>
+.intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px 32px;align-items:end;padding-block:28px 8px}
+.intro h1{font-family:var(--f-display);font-size:clamp(34px,6vw,54px);line-height:1;margin:0 0 10px;text-wrap:balance}
+.intro p{margin:0;color:var(--muted);max-width:58ch;font-size:16px}
+.search{min-width:260px}
+.search input{width:100%;border:1px solid var(--line);border-radius:24px;padding:10px 16px;background:var(--panel)}
+@media (max-width:700px){.intro{grid-template-columns:1fr}.search{min-width:0}}
+.cat{margin-top:30px}
+.cat h2{display:flex;align-items:baseline;gap:10px;font-family:var(--f-display);font-size:22px;margin:0 0 12px}
+.cat h2 small{font-family:var(--f-body);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.card{display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;text-decoration:none;color:var(--ink);transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.card b{font-size:16.5px;font-weight:600}
+.card p{margin:0;color:var(--muted);font-size:14px;flex:1}
+.card .rep{font-size:12px;color:var(--accent);font-weight:500}
+.foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:8px 24px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="intro">
+    <div>
+      <h1>HR Hub</h1>
+      <p>GoodPWR's own toolkit for documents, design and scheduling. Free for the whole team, and every file is processed right in your browser, so nothing is uploaded or stored.</p>
+    </div>
+    <div class="search"><input id="q" type="search" placeholder="Find a tool…" aria-label="Find a tool"></div>
+  </section>
+  <div id="cats"></div>
+  <p class="muted" id="none" hidden>No tool matches that search.</p>
+  <footer class="foot"><span>GoodPWR HR Hub</span><span>No accounts, no database, no uploads.</span></footer>
+</main>
+<script src="assets/hub.js"></script>
+<script>
+const TOOLS = [
+  ['PDF tools', 'Replaces Acrobat', [
+    ['pdf-editor', 'PDF Editor', 'Edit existing text, highlight, draw, white-out, and merge, split, rotate or reorder pages.', 'Adobe Acrobat Pro'],
+    ['form-builder', 'Fillable Form Builder', 'Turn any PDF into a fillable form with text boxes, checkboxes, dropdowns and signature fields.', 'Acrobat Pro, Jotform'],
+    ['sign-pdf', 'Sign a PDF', 'Draw, type or upload your signature, add initials and dates, then download the signed copy.', 'DocuSign, Adobe Sign'],
+    ['pdf-compare', 'Compare PDFs', 'See exactly what changed between two versions of a contract or policy.', 'Acrobat Compare, Draftable'],
+    ['ocr', 'OCR / Searchable Scans', 'Turn scanned pages and photos into searchable, copyable PDFs.', 'Acrobat Pro, ABBYY'],
+    ['bates-numbering', 'Bates Numbering', 'Stamp legal-style page numbers across one or many PDFs.', 'Acrobat Pro'],
+    ['mail-merge', 'Mail Merge to PDF', 'One template plus a spreadsheet of names gives you a personalized PDF for everyone.', 'Formstack, Word add-ons']
+  ]],
+  ['Design', 'Replaces Canva Pro', [
+    ['certificate-designer', 'Certificate Designer', 'Design award and training certificates, one at a time or for a whole list.', 'Canva Pro'],
+    ['social-graphics', 'Announcement Graphics', 'Hiring posts, welcomes, holidays and anniversaries in GoodPWR branding.', 'Canva Pro'],
+    ['background-remover', 'Background Remover', 'Clean, consistent headshots with the background removed or replaced.', 'remove.bg, Canva Pro'],
+    ['email-signature', 'Email Signature Builder', 'Matching GoodPWR signatures for Gmail and Outlook.', 'WiseStamp, Exclaimer']
+  ]],
+  ['Everyday utilities', 'Replaces paid add-ons', [
+    ['time-zones', 'Time Zone Planner', 'Find meeting times that work across US and Philippine offices.', 'World Time Buddy Pro'],
+    ['label-maker', 'QR & Barcode Labels', 'Asset tags and labels laid out for Avery sheets, ready to print.', 'Avery Design Pro']
+  ]]
+];
+function render(q = '') {
+  q = q.trim().toLowerCase(); let shown = 0;
+  document.getElementById('cats').innerHTML = TOOLS.map(([cat, sub, tools]) => {
+    const list = tools.filter(t => !q || (t[1] + ' ' + t[2] + ' ' + t[3]).toLowerCase().includes(q));
+    shown += list.length; if (!list.length) return '';
+    return `<section class="cat"><h2>${cat} <small>${sub}</small></h2><div class="cards">` +
+      list.map(([id, name, desc, rep]) => `<a class="card" href="tools/${id}.html"><b>${name}</b><p>${desc}</p><span class="rep">Instead of ${rep}</span></a>`).join('') +
+      '</div></section>';
+  }).join('');
+  document.getElementById('none').hidden = shown > 0;
+}
+Hub.mount('');
+render();
+document.getElementById('q').addEventListener('input', e => render(e.target.value));
+</script>
+</body>
+</html>
